@@ -9,7 +9,8 @@
     "tools": {}
   },
   "frameworks": [
-    "baremetal"
+    "baremetal",
+    "freertos"
   ],
   "name": "NXP MPC-5748P",
   "upload": {

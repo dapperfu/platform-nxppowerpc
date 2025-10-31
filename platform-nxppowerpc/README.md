@@ -32,7 +32,7 @@ framework = baremetal
 
 ```ini
 [env:mpc5748g]
-platform = https://github.com/platformio/platform-nxppowerpc.git
+platform = https://github.com/dapperfu/platform-nxppowerpc.git
 board = mpc5748g
 framework = baremetal
 ```
@@ -174,7 +174,7 @@ pio platform uninstall nxppowerpc
 pio platform install nxppowerpc
 
 # Or install from git
-pio platform install https://github.com/platformio/platform-nxppowerpc.git
+pio platform install https://github.com/dapperfu/platform-nxppowerpc.git
 ```
 
 ### Linker Errors

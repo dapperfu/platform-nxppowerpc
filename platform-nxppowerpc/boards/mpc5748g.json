@@ -1,4 +1,4 @@
-{
+Ca{
   "build": {
     "cpu": "e200z4",
     "f_cpu": "120000000L",
@@ -9,7 +9,8 @@
     "tools": {}
   },
   "frameworks": [
-    "baremetal"
+    "baremetal",
+    "freertos"
   ],
   "name": "NXP MPC-5748G",
   "upload": {
