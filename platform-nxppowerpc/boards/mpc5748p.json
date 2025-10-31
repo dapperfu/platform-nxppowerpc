@@ -1,0 +1,22 @@
+{
+  "build": {
+    "cpu": "e200z4",
+    "f_cpu": "120000000L",
+    "mcu": "mpc5748p",
+    "extra_flags": "-DMPC5748P"
+  },
+  "debug": {
+    "tools": {}
+  },
+  "frameworks": [
+    "baremetal"
+  ],
+  "name": "NXP MPC-5748P",
+  "upload": {
+    "maximum_ram_size": 512000,
+    "maximum_size": 2097152
+  },
+  "url": "https://www.nxp.com/products/processors-and-microcontrollers/power-architecture-processors/powerpc-processors/powerpc-5xx-processors/mpc5748p-32-bit-microcontroller-mcu:MPC5748P",
+  "vendor": "NXP"
+}
+

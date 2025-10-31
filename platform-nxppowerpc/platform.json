@@ -1,0 +1,32 @@
+{
+  "name": "nxppowerpc",
+  "title": "NXP PowerPC VLE",
+  "description": "NXP PowerPC VLE microcontrollers (MPC57xx series) using Docker-based cross-compilation toolchain. Supports MPC-5748G and MPC-5748P boards with baremetal framework.",
+  "homepage": "https://www.nxp.com/products/processors-and-microcontrollers/power-architecture-processors/powerpc-processors/powerpc-5xx-processors",
+  "license": "Apache-2.0",
+  "keywords": [
+    "dev-platform",
+    "NXP",
+    "PowerPC",
+    "VLE",
+    "MPC57xx",
+    "MPC5748G",
+    "MPC5748P"
+  ],
+  "engines": {
+    "platformio": "^6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/platformio/platform-nxppowerpc.git"
+  },
+  "version": "1.0.0",
+  "frameworks": {
+    "baremetal": {
+      "package": null,
+      "script": "builder/frameworks/baremetal.py"
+    }
+  },
+  "packages": {}
+}
+
