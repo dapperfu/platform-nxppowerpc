@@ -21,6 +21,8 @@ OpenSDA (Open Serial and Debug Adapter) is NXP's proprietary debug interface com
 - Proprietary firmware (v1.0)
 - ARM Cortex-M focused (v2.0+ uses CMSIS-DAP for ARM)
 - Limited PowerPC-specific support
+- **Limited Scriptability**: Scripting capabilities are limited and not extensively documented
+- **Automation Challenges**: Not well-suited for advanced automation or CI/CD workflows
 
 ## FOSS Alternatives for ARM-Based NXP MCUs
 
@@ -50,9 +52,9 @@ These alternatives work for ARM Cortex-M devices but **NOT for PowerPC**:
 
 - **Status**: Open-source (GPL)
 - **Protocol**: Multiple (JTAG, SWD, CMSIS-DAP)
-- **PowerPC Support**: Limited - primarily ARM focused
+- **PowerPC Support**: ⚠️ Limited - development in progress (see OpenOCD PowerPC Research section)
 - **Features**: GDB debugging, flash programming, boundary scan
-- **Note**: May have some PowerPC support, but requires specific configuration and debug probe support
+- **Note**: Some PowerPC development work exists, but support is not comprehensive
 
 ## PowerPC-Specific Debugging Solutions
 
@@ -100,18 +102,74 @@ PowerPC e200z4 supports Nexus debug interface:
 
 ### OpenOCD for PowerPC
 
-**Research Status**: ⚠️ Requires verification
+**Research Status**: ✅ Some development work exists, but support remains limited
 
-OpenOCD may support PowerPC targets, but:
-- Requires JTAG debug probe (not OpenSDA/CMSIS-DAP)
-- Needs specific target configuration for e200z4
-- May need custom adapter scripts
+#### Research Findings
 
-**Investigation Needed**:
+1. **March 2021 Patch**: A patch was submitted to OpenOCD's development mailing list introducing initial support for the On-Chip Emulator (OCE) in Power Architecture e200 cores.
+   - **Target**: Power Architecture e200 cores (used in STMicroelectronics SPC56x/RPC56x and potentially NXP MPC56x series)
+   - **Status**: Patch submitted, integration status unclear
+   - **Source**: OpenOCD sourceforge mailing list (March 2021)
+   - **URL**: https://sourceforge.net/p/openocd/mailman/message/37247733/
+
+2. **Current Status** (as of 2024):
+   - **PowerPC Support**: Limited - primarily ARM focused
+   - **Documentation**: OpenOCD official docs note that while open-source implementations for PowerPC target manipulation exist, activity has been minimal
+   - **OpenOCD Version**: Latest release (0.12.0+) still has limited PowerPC support
+   - **Official Note**: "There are open-source implementations for PowerPC target manipulation, but activity in this area has been limited"
+
+3. **Requirements for PowerPC Support**:
+   - Requires JTAG debug probe (not OpenSDA/CMSIS-DAP)
+   - Needs specific target configuration for e200z4
+   - May need custom adapter scripts
+   - Target configuration files may not exist in standard OpenOCD distribution
+
+#### Verification Steps
+
 ```bash
-# Check OpenOCD PowerPC support
+# Check if OpenOCD is installed
+which openocd
+
+# Check OpenOCD version
+openocd --version
+
+# List available target configurations
+ls $(openocd --version | grep -oP '(?<=OpenOCD )[0-9.]+')/share/openocd/scripts/target/ 2>/dev/null | grep -i powerpc
+
+# Check OpenOCD help for PowerPC
 openocd -c "help" | grep -i powerpc
+
+# Search OpenOCD source code (if cloned)
+cd openocd-source
+find . -type f -name "*powerpc*" -o -name "*ppc*" -o -name "*e200*"
 ```
+
+#### OpenOCD Git Repository Investigation
+
+To verify current PowerPC support status:
+```bash
+# Clone OpenOCD repository
+git clone https://github.com/openocd-org/openocd.git
+cd openocd
+
+# Search for PowerPC-related files
+find . -type f \( -name "*powerpc*" -o -name "*ppc*" -o -name "*e200*" \)
+
+# Check target directory
+ls -la src/target/ | grep -i powerpc
+
+# Check for e200 core support
+grep -r "e200" src/ 2>/dev/null
+```
+
+#### Conclusion
+
+OpenOCD PowerPC support:
+- ✅ **Some development exists** (e200 OCE patch from 2021)
+- ⚠️ **Not fully integrated** or mature
+- ⚠️ **Requires verification** for MPC5748G (e200z4) specific support
+- ⚠️ **May need custom configuration** or patches
+- 📋 **Recommendation**: Test with actual hardware before committing to this approach
 
 ## Recommended Approach for PowerPC MPC5748G
 
@@ -206,6 +264,47 @@ For the `platform-nxppowerpc` project:
    }
    ```
 
+## OpenSDA Scriptability
+
+### Scriptability Assessment
+
+**OpenSDA Scriptability**: ❌ **Limited**
+
+#### Findings
+
+1. **Limited Documentation**: OpenSDA scripting capabilities are not extensively documented
+2. **Proprietary Nature**: The proprietary firmware limits customization and automation
+3. **Not Well-Suited for Automation**: Limited scripting support makes it challenging for:
+   - CI/CD integration
+   - Batch programming operations
+   - Automated testing workflows
+   - Custom toolchain integration
+
+#### Workarounds for Scripting
+
+While OpenSDA itself has limited scripting, developers have found workarounds:
+
+1. **GDB Scripting**: Use GDB scripts with P&E GDB Server (if OpenSDA hardware runs P&E firmware)
+   ```bash
+   # Example GDB script for automation
+   powerpc-eabivle-gdb -batch -x flash_script.gdb firmware.elf
+   ```
+
+2. **Python Automation**: Script GDB commands programmatically
+   - See Example 2 in Practical Examples section
+   - Community tools like `opensda_flasher` use this approach
+
+3. **Command-Line Tools**: Some community tools wrap OpenSDA functionality
+   - Requires investigation of specific tools
+   - May still rely on proprietary backends
+
+#### Recommendation
+
+For scriptable automation with PowerPC:
+- **Better Option**: Use P&E Micro GDB Server directly (more scriptable)
+- **Best Option**: Use Python/GDB scripts with P&E GDB Server for full automation control
+- **Avoid**: Relying on OpenSDA's built-in scripting capabilities
+
 ## Practical Examples
 
 ### Example 1: GDB Flashing with P&E GDB Server
@@ -298,6 +397,9 @@ reset_config srst_only
 - NXP MPC57xx Community: https://community.nxp.com/t5/MPC5xxx/bd-p/MPC5xxx
 - PowerPC e200z4 Core Reference Manual: NXP documentation
 - OpenOCD Documentation: http://openocd.org/doc/
+- OpenOCD Source Code: https://github.com/openocd-org/openocd
+- OpenOCD Mailing List Archive: https://sourceforge.net/p/openocd/mailman/
+- OpenOCD PowerPC e200 Patch (March 2021): https://sourceforge.net/p/openocd/mailman/message/37247733/
 
 ## Summary and Recommendations
 
@@ -321,8 +423,10 @@ reset_config srst_only
 
 - **No fully FOSS solution exists** that matches OpenSDA functionality for PowerPC
 - ARM-based alternatives (CMSIS-DAP, DAPLink) **do not work** with PowerPC
+- **OpenSDA is not well-scriptable** - limited scripting capabilities and documentation
 - Current standard for PowerPC is P&E Micro (proprietary but functional)
-- OpenOCD may be viable but requires investigation and JTAG hardware
+- **OpenOCD has PowerPC development work** (2021 patch for e200 OCE), but support remains limited
+- OpenOCD may be viable but requires investigation, testing, and JTAG hardware
 
 ### Conclusion
 
