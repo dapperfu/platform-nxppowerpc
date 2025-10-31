@@ -186,7 +186,20 @@ Ensure you have:
 
 ## Examples
 
-See `examples/baremetal-blink/` for a simple example project.
+Examples are maintained in a separate repository to keep the platform codebase clean:
+
+**[platform-nxppowerpc-examples](https://github.com/dapperfu/platform-nxppowerpc-examples)**
+
+Available examples include:
+- **FreeRTOS Blink**: LED blink using FreeRTOS tasks
+- **Baremetal Blink**: Minimal baremetal example
+
+Clone the examples repository:
+```bash
+git clone https://github.com/dapperfu/platform-nxppowerpc-examples.git
+cd platform-nxppowerpc-examples/freertos-blink
+pio run
+```
 
 ## Contributing
 

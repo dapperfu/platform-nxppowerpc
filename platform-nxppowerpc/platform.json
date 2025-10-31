@@ -25,13 +25,18 @@
     "baremetal": {
       "package": null,
       "script": "builder/frameworks/baremetal.py"
+    },
+    "freertos": {
+      "package": null,
+      "script": "builder/frameworks/freertos.py"
     }
   },
   "packages": {
-    "toolchain-powerpc-eabivle": {
-      "type": "toolchain",
+    "framework-freertos": {
+      "type": "framework",
+      "optional": true,
       "owner": "platformio",
-      "version": "~1.0.0"
+      "version": "~10.6.1"
     }
   }
 }

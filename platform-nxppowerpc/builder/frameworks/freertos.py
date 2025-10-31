@@ -19,7 +19,7 @@ FreeRTOS real-time operating system support for PowerPC VLE microcontrollers.
 This builder configures FreeRTOS source files and port files for PowerPC VLE.
 """
 
-from os.path import isdir, join
+from os.path import isdir, join, exists
 
 from SCons.Script import DefaultEnvironment
 
@@ -27,11 +27,39 @@ env = DefaultEnvironment()
 platform = env.PioPlatform()
 board = env.BoardConfig()
 
-FRAMEWORK_DIR = platform.get_package_dir("framework-freertos")
-assert isdir(FRAMEWORK_DIR), "FreeRTOS framework package not found"
+# Try to get FreeRTOS from package, fallback to local lib directory
+FRAMEWORK_DIR = None
+try:
+    FRAMEWORK_DIR = platform.get_package_dir("framework-freertos")
+    if not isdir(FRAMEWORK_DIR):
+        FRAMEWORK_DIR = None
+except Exception:
+    pass
 
-# FreeRTOS directory structure
-FREERTOS_SRC_DIR = join(FRAMEWORK_DIR, "FreeRTOS", "Source")
+if FRAMEWORK_DIR is None:
+    # Try local lib directory using PlatformIO environment expansion
+    import os
+    project_dir = env.subst("$PROJECT_DIR")
+    local_freertos = os.path.join(project_dir, "lib", "FreeRTOS")
+    if isdir(local_freertos):
+        FRAMEWORK_DIR = local_freertos
+    else:
+        raise Exception("FreeRTOS not found. Please install it as a PlatformIO package or place it in lib/FreeRTOS")
+
+if FRAMEWORK_DIR is None or not isdir(FRAMEWORK_DIR):
+    raise Exception("FreeRTOS framework directory not found: %s" % FRAMEWORK_DIR)
+
+# FreeRTOS directory structure - check if it's the kernel repo structure
+if isdir(join(FRAMEWORK_DIR, "FreeRTOS", "Source")):
+    # Full FreeRTOS distribution structure
+    FREERTOS_SRC_DIR = join(FRAMEWORK_DIR, "FreeRTOS", "Source")
+elif isdir(join(FRAMEWORK_DIR, "Source")):
+    # Kernel-only repo structure
+    FREERTOS_SRC_DIR = join(FRAMEWORK_DIR, "Source")
+else:
+    # Assume flat structure
+    FREERTOS_SRC_DIR = FRAMEWORK_DIR
+
 FREERTOS_PORT_DIR = join(FREERTOS_SRC_DIR, "portable", "GCC", "PowerPC")
 
 # Add FreeRTOS include paths
@@ -41,6 +69,10 @@ env.Append(
         FREERTOS_PORT_DIR,
         join("$PROJECT_DIR", "include"),
         join("$PROJECT_DIR", "src"),
+    ],
+    # Prevent PlatformIO library finder from processing FreeRTOS
+    PIO_LIB_SRC_FILTER=[
+        "-<lib/FreeRTOS/>",  # Exclude FreeRTOS from library finder
     ]
 )
 
@@ -69,17 +101,23 @@ for source in port_sources:
         print("Warning: PowerPC FreeRTOS port not found. You may need to provide your own port implementation.")
         break
 
-# Build FreeRTOS library
-libs = []
+# Add FreeRTOS source files directly to the build - compile specific files only
+# Filter out sources that don't exist
+valid_freertos_sources = [env.subst(s) for s in freertos_sources if exists(s)]
+valid_port_sources = [env.subst(s) for s in port_sources if exists(s)]
 
-freertos_lib = env.BuildLibrary(
+# Create source filter to exclude all portable ports except PowerPC
+src_filter = [
+    "-<portable/>",  # Exclude all portable directories
+    "+<portable/GCC/PowerPC/>",  # Include only PowerPC port
+]
+
+# Add FreeRTOS sources with filter
+env.BuildSources(
     join("$BUILD_DIR", "FrameworkFreeRTOS"),
-    [s for s in freertos_sources + port_sources if isdir(FREERTOS_SRC_DIR)]
+    FREERTOS_SRC_DIR,
+    src_filter=src_filter
 )
-
-libs.append(freertos_lib)
-
-env.Append(LIBS=libs)
 
 # Add FreeRTOS defines
 env.Append(

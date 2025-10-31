@@ -19,7 +19,8 @@ Builds firmware for NXP PowerPC VLE microcontrollers using PlatformIO's
 toolchain package system for cross-compilation.
 """
 
-from os.path import join
+from os.path import join, exists
+import os
 
 from SCons.Script import (COMMAND_LINE_TARGETS, AlwaysBuild, Builder, Default,
                           DefaultEnvironment)
@@ -27,9 +28,35 @@ from SCons.Script import (COMMAND_LINE_TARGETS, AlwaysBuild, Builder, Default,
 env = DefaultEnvironment()
 platform = env.PioPlatform()
 
-# Get toolchain package directory
-TOOLCHAIN_DIR = platform.get_package_dir("toolchain-powerpc-eabivle")
+# Try to get toolchain package directory, fallback to system toolchain
+TOOLCHAIN_DIR = None
 TOOLCHAIN_PREFIX = "powerpc-eabivle-"
+SYSTEM_TOOLCHAIN_PATHS = [
+    "/tmp/toolchain/S32DS/build_tools/powerpc-eabivle-4_9/bin",
+    "/S32DS/build_tools/powerpc-eabivle-4_9/powerpc-eabivle/bin",
+    "/opt/powerpc-eabivle/bin",
+    "/usr/local/powerpc-eabivle/bin",
+]
+
+try:
+    TOOLCHAIN_DIR = platform.get_package_dir("toolchain-powerpc-eabivle")
+except Exception:
+    # Package not found, try system toolchain
+    for sys_path in SYSTEM_TOOLCHAIN_PATHS:
+        if exists(join(sys_path, TOOLCHAIN_PREFIX + "gcc")):
+            TOOLCHAIN_DIR = sys_path
+            # Use full paths for system toolchain
+            TOOLCHAIN_PREFIX = join(sys_path, TOOLCHAIN_PREFIX)
+            break
+    
+    if TOOLCHAIN_DIR is None:
+        # Still not found, try PATH
+        import shutil
+        if shutil.which(TOOLCHAIN_PREFIX + "gcc"):
+            TOOLCHAIN_PREFIX = TOOLCHAIN_PREFIX
+            print("Using system toolchain from PATH")
+        else:
+            raise Exception("PowerPC EABI VLE toolchain not found. Please install it or set up the PlatformIO package.")
 
 # Get board configuration
 board = env.BoardConfig()
@@ -96,11 +123,26 @@ env.Append(
     LINKFLAGS=machine_flags + [
         "-Os",
         "-Wl,-gc-sections",
-        "-nostdlib"
     ],
-    
-    LIBS=["m", "c"],
 )
+
+# Find toolchain library path and add to LIBPATH
+if TOOLCHAIN_DIR:
+    toolchain_lib_base = join(TOOLCHAIN_DIR, "..", "..", "e200_ewl2", "lib")
+    cpu_variant = board.get('build.cpu', 'e200z4')
+    # Try to find library path for this CPU variant
+    potential_lib_paths = [
+        join(toolchain_lib_base, cpu_variant),
+        join(toolchain_lib_base, cpu_variant, "spe"),
+        join(toolchain_lib_base, "e200z6"),  # Fallback
+    ]
+    
+    for lib_path in potential_lib_paths:
+        expanded_lib_path = env.subst(lib_path)
+        if exists(expanded_lib_path):
+            env.Append(LIBPATH=[lib_path])
+            env.Append(LIBS=["m", "c"])
+            break
 
 # Allow user to override via pre:script
 if env.get("PROGNAME", "program") == "program":
