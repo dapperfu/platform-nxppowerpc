@@ -1,10 +1,10 @@
 # NXP PowerPC VLE: development platform for [PlatformIO](https://platformio.org)
 
-NXP PowerPC VLE development platform for PlatformIO, supporting MPC-5748G and MPC-5748P microcontrollers using Docker-based cross-compilation.
+NXP PowerPC VLE development platform for PlatformIO, supporting MPC-5748G and MPC-5748P microcontrollers using PlatformIO's standard toolchain package system.
 
 ## Overview
 
-This platform provides support for NXP PowerPC VLE (Variable Length Encoding) microcontrollers, specifically the MPC57xx series. It uses a Docker-based toolchain from [AutomotiveDevOps/powerpc-eabivle-gcc-dockerfiles](https://github.com/AutomotiveDevOps/powerpc-eabivle-gcc-dockerfiles) for consistent, reproducible builds across different development environments.
+This platform provides support for NXP PowerPC VLE (Variable Length Encoding) microcontrollers, specifically the MPC57xx series. It uses PlatformIO's toolchain package system which automatically downloads and manages the PowerPC EABI VLE cross-compilation toolchain.
 
 ## Supported Boards
 
@@ -13,29 +13,7 @@ This platform provides support for NXP PowerPC VLE (Variable Length Encoding) mi
 
 ## Prerequisites
 
-### Docker Setup
-
-1. Install Docker on your system:
-   ```bash
-   # Ubuntu/Debian
-   sudo apt-get install docker.io
-   
-   # Or follow Docker's official installation guide
-   ```
-
-2. Build the Docker image:
-   ```bash
-   git clone https://github.com/AutomaticDevOps/powerpc-eabivle-gcc-dockerfiles.git
-   cd powerpc-eabivle-gcc-dockerfiles
-   sh build.sh
-   ```
-
-   This will create a Docker image tagged as `s32ds-power-v1-2:latest`.
-
-3. Verify the image exists:
-   ```bash
-   docker images | grep s32ds-power-v1-2
-   ```
+No manual setup required! PlatformIO will automatically download and install the required PowerPC EABI VLE toolchain package when you install this platform.
 
 ## Installation
 
@@ -173,9 +151,9 @@ build_flags =
     -DMPC5748G                   ; Board define (auto-set)
 ```
 
-## Docker Toolchain
+## Toolchain
 
-The platform uses Docker container `s32ds-power-v1-2:latest` which includes:
+The platform automatically installs the `toolchain-powerpc-eabivle` package which includes:
 - `powerpc-eabivle-gcc` - C compiler
 - `powerpc-eabivle-g++` - C++ compiler
 - `powerpc-eabivle-ar` - Archiver
@@ -183,28 +161,20 @@ The platform uses Docker container `s32ds-power-v1-2:latest` which includes:
 - `powerpc-eabivle-size` - Size utility
 - Other standard GCC toolchain utilities
 
-All compilation happens inside the Docker container, ensuring consistent builds regardless of the host system.
+PlatformIO automatically manages the toolchain package, downloading and extracting it to `.platformio/packages/toolchain-powerpc-eabivle/` in your project directory. This ensures consistent builds across different development environments without requiring Docker or manual toolchain installation.
 
 ## Troubleshooting
 
-### Docker Image Not Found
+### Toolchain Not Found
 
-If you see errors about the Docker image:
+If you see errors about the toolchain:
 ```bash
-# Check if image exists
-docker images | grep s32ds-power-v1-2
+# Reinstall the platform to force toolchain download
+pio platform uninstall nxppowerpc
+pio platform install nxppowerpc
 
-# If missing, build it:
-cd powerpc-eabivle-gcc-dockerfiles
-sh build.sh
-```
-
-### Docker Permission Issues
-
-On Linux, you may need to add your user to the docker group:
-```bash
-sudo usermod -aG docker $USER
-# Log out and back in
+# Or install from git
+pio platform install https://github.com/platformio/platform-nxppowerpc.git
 ```
 
 ### Linker Errors
@@ -225,7 +195,6 @@ Contributions welcome! Areas for improvement:
 - Arduino framework support
 - Additional board support
 - Upload/debug support (OpenSDA, etc.)
-- Better Docker integration
 
 ## License
 
@@ -235,6 +204,5 @@ Apache License 2.0
 
 - [NXP MPC5748G Product Page](https://www.nxp.com/products/processors-and-microcontrollers/power-architecture-processors/powerpc-processors/powerpc-5xx-processors/mpc5748g-32-bit-microcontroller-mcu:MPC5748G)
 - [PowerPC e200z4 Core Reference](https://www.nxp.com/docs/en/reference-manual/MPC57XXRM.pdf)
-- [Docker Toolchain Repository](https://github.com/AutomotiveDevOps/powerpc-eabivle-gcc-dockerfiles)
 - [PlatformIO Documentation](https://docs.platformio.org/)
 
