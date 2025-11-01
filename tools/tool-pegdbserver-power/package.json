@@ -25,6 +25,6 @@
     "url": "https://github.com/dapperfu/platform-nxppowerpc.git"
   },
   "urls": {
-    "linux_x86_64": "https://github.com/dapperfu/platform-nxppowerpc/archive/refs/heads/main.zip"
+    "linux_x86_64": "file:///projects/platformio/platform-nxppowerpc/tools/tool-pegdbserver-power/package/tool-pegdbserver-power.zip"
   }
 }

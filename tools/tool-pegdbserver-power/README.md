@@ -72,6 +72,29 @@ cd build_platformio_pegdbserver
 make package S32DS_ROOT=/path/to/s32ds
 ```
 
+## Local Testing
+
+For local testing with a specific S32DS installation, the package can be built and configured to use a local file:// URL:
+
+```bash
+# Build the package from local S32DS installation
+cd /projects/platformio/platform-nxppowerpc
+python3 build_platformio_pegdbserver/build_pio_package.py \
+  --s32ds-root /home/jed/NXP/S32DS_Power_v2017.R1 \
+  --output-dir tools/tool-pegdbserver-power/package \
+  --no-archive
+
+# Create zip archive
+cd tools/tool-pegdbserver-power/package
+zip -r tool-pegdbserver-power.zip tool-pegdbserver-power/
+
+# Update package.json to use file:// URL (currently configured for local testing)
+# The package.json urls field should point to:
+# file:///projects/platformio/platform-nxppowerpc/tools/tool-pegdbserver-power/package/tool-pegdbserver-power.zip
+```
+
+The package is currently configured for local testing using the S32DS installation at `/home/jed/NXP/S32DS_Power_v2017.R1`.
+
 ## License
 
 This package contains proprietary software from P&E Microcomputer Systems. Please refer to the S32 Design Studio license terms for usage restrictions.
