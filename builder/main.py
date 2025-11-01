@@ -72,9 +72,11 @@ SYSTEM_TOOLCHAIN_PATHS.extend(standard_paths)
 # This ensures PlatformIO downloads it from GitHub releases even if dependency resolution
 # didn't run or failed.
 TOOLCHAIN_DIR = None
+# Try to get toolchain from PlatformIO package first
+# PlatformIO should automatically install packages listed in platform.json
+# when the platform is used. For git-installed platforms, we also have a fallback
+# that automatically downloads from GitHub releases.
 try:
-    # PlatformIO should automatically install packages listed in platform.json
-    # when the platform is used. Check if the toolchain package is already installed.
     TOOLCHAIN_DIR = platform.get_package_dir("toolchain-powerpc-eabivle")
     # Verify toolchain directory exists and has the compiler
     # Check both root/bin and nested subdirectories (e.g., powerpc-eabivle-4_9/bin)
@@ -214,17 +216,23 @@ if TOOLCHAIN_DIR is None:
                                     break
                     
                     if not found_compiler:
-                        print("Downloading toolchain from GitHub: %s" % package_url)
+                        print("Downloading toolchain from GitHub releases...")
+                        print("  URL: %s" % package_url)
+                        print("  Installing to: %s" % pkg_install_dir)
                         
                         # Download and extract the toolchain
                         import urllib.request
                         import zipfile
                         import tempfile
                         
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp_zip:
-                            zip_path = tmp_zip.name
+                        try:
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp_zip:
+                                zip_path = tmp_zip.name
+                            
+                            print("  Downloading archive...")
                             urllib.request.urlretrieve(package_url, zip_path)
                             
+                            print("  Extracting archive...")
                             # Extract to packages directory
                             os.makedirs(pkg_install_dir, exist_ok=True)
                             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -232,8 +240,13 @@ if TOOLCHAIN_DIR is None:
                             
                             # Remove temp file
                             os.unlink(zip_path)
-                        
-                        print("Toolchain installed from GitHub: %s" % pkg_install_dir)
+                            
+                            print("Toolchain installed successfully from GitHub: %s" % pkg_install_dir)
+                        except Exception as download_error:
+                            print("ERROR: Failed to download/install toolchain: %s" % str(download_error))
+                            import traceback
+                            traceback.print_exc()
+                            raise
                     
                     # Find the actual toolchain root (may be in a subdirectory)
                     if exists(join(pkg_install_dir, "bin", TOOLCHAIN_PREFIX + "gcc")):
@@ -276,6 +289,7 @@ if TOOLCHAIN_DIR is None:
         # Package installation failed, continue to system toolchain check
         import traceback
         print("Error during toolchain download/installation: %s" % str(install_error))
+        print("Attempting automatic toolchain installation from platform tools directory...")
         traceback.print_exc()
 
 # If PlatformIO package not found, try system toolchain
