@@ -37,7 +37,8 @@
   },
   "packages": {
     "toolchain-powerpc-eabivle": {
-      "type": "toolchain"
+      "type": "toolchain",
+      "version": "4.9.4.2724867"
     },
     "framework-freertos": {
       "type": "framework",

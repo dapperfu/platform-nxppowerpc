@@ -62,56 +62,49 @@ standard_paths = [
 
 SYSTEM_TOOLCHAIN_PATHS.extend(standard_paths)
 
-# Try to get toolchain from PlatformIO package first
-# PlatformIO automatically downloads packages from tools/<package-name>/package.json
-# when referenced in platform.json, using the URLs specified in package.json.
-# The package definition in tools/toolchain-powerpc-eabivle/package.json contains
-# the GitHub release URL (https://github.com/dapperfu/platform-nxppowerpc/releases/download/...).
-#
-# If the package isn't installed yet, we try to install it explicitly using the PackageManager.
-# This ensures PlatformIO downloads it from GitHub releases even if dependency resolution
-# didn't run or failed.
+# Get toolchain from PlatformIO package system
+# PlatformIO automatically installs packages listed in platform.json from tools/<package-name>/package.json
+# This works seamlessly like official toolchains (e.g., toolchain-armeabigcc)
 TOOLCHAIN_DIR = None
-# Try to get toolchain from PlatformIO package first
-# PlatformIO should automatically install packages listed in platform.json
-# when the platform is used. For git-installed platforms, we also have a fallback
-# that automatically downloads from GitHub releases.
+
+def find_toolchain_in_dir(pkg_dir):
+    """Find toolchain compiler in package directory, handling nested structures."""
+    if not pkg_dir or not exists(pkg_dir):
+        return None
+    
+    # Check root level first
+    gcc_path = join(pkg_dir, "bin", TOOLCHAIN_PREFIX + "gcc")
+    if exists(gcc_path):
+        return pkg_dir
+    
+    # Check nested subdirectories (e.g., powerpc-eabivle-4_9/bin)
+    try:
+        for item in os.listdir(pkg_dir):
+            subdir = join(pkg_dir, item)
+            if os.path.isdir(subdir):
+                subdir_gcc = join(subdir, "bin", TOOLCHAIN_PREFIX + "gcc")
+                if exists(subdir_gcc):
+                    return subdir
+    except OSError:
+        pass
+    
+    return None
+
 try:
     TOOLCHAIN_DIR = platform.get_package_dir("toolchain-powerpc-eabivle")
-    # Verify toolchain directory exists and has the compiler
-    # Check both root/bin and nested subdirectories (e.g., powerpc-eabivle-4_9/bin)
     if TOOLCHAIN_DIR:
-        # Check root level first
-        gcc_path_root = join(TOOLCHAIN_DIR, "bin", TOOLCHAIN_PREFIX + "gcc")
-        if exists(gcc_path_root):
+        # Verify toolchain is actually present
+        actual_dir = find_toolchain_in_dir(TOOLCHAIN_DIR)
+        if actual_dir:
+            TOOLCHAIN_DIR = actual_dir
             TOOLCHAIN_PREFIX = join(TOOLCHAIN_DIR, "bin", TOOLCHAIN_PREFIX)
-            print("Using PlatformIO toolchain package (from GitHub): %s" % TOOLCHAIN_DIR)
         else:
-            # Check nested subdirectories
-            found_toolchain = False
-            if exists(TOOLCHAIN_DIR):
-                for item in os.listdir(TOOLCHAIN_DIR):
-                    subdir = join(TOOLCHAIN_DIR, item)
-                    if os.path.isdir(subdir):
-                        gcc_path_sub = join(subdir, "bin", TOOLCHAIN_PREFIX + "gcc")
-                        if exists(gcc_path_sub):
-                            TOOLCHAIN_DIR = subdir
-                            TOOLCHAIN_PREFIX = join(TOOLCHAIN_DIR, "bin", TOOLCHAIN_PREFIX)
-                            print("Using PlatformIO toolchain package (from GitHub): %s" % TOOLCHAIN_DIR)
-                            found_toolchain = True
-                            break
-            if not found_toolchain:
-                TOOLCHAIN_DIR = None
-    else:
-        TOOLCHAIN_DIR = None
+            TOOLCHAIN_DIR = None
 except Exception:
     TOOLCHAIN_DIR = None
 
-# Fallback: If package not found (shouldn't happen if platform.json is properly configured),
-# manually download and install from GitHub releases. This handles edge cases like:
-# - Platform installed before toolchain was added to platform.json
-# - PlatformIO dependency resolution issues
-# - Git-installed platforms that haven't been properly initialized
+# Fallback: Auto-install from tools/package.json if PlatformIO dependency resolution hasn't run yet
+# This ensures seamless installation like official toolchains, even for git-installed platforms
 if TOOLCHAIN_DIR is None:
     try:
         tools_package_json = join(
@@ -134,41 +127,16 @@ if TOOLCHAIN_DIR is None:
                 pkg_name = pkg_manifest["name"]
                 pkg_version = pkg_manifest["version"]
                 
-                # Get PlatformIO packages directory
-                # PlatformIO stores packages in .platformio/packages/ relative to project
-                # First check if package is already installed
+                # Check if package is already installed (may have been installed by PlatformIO after our check)
                 try:
                     existing_pkg_dir = platform.get_package_dir(pkg_name)
                     if existing_pkg_dir:
-                        # Check root level first
-                        gcc_path_root = join(existing_pkg_dir, "bin", TOOLCHAIN_PREFIX + "gcc")
-                        if exists(gcc_path_root):
-                            TOOLCHAIN_DIR = existing_pkg_dir
+                        found_dir = find_toolchain_in_dir(existing_pkg_dir)
+                        if found_dir:
+                            TOOLCHAIN_DIR = found_dir
                             TOOLCHAIN_PREFIX = join(TOOLCHAIN_DIR, "bin", TOOLCHAIN_PREFIX)
-                            print("Using PlatformIO toolchain package (from GitHub): %s" % TOOLCHAIN_DIR)
-                            existing_pkg_dir = None  # Mark as found
-                        else:
-                            # Check nested subdirectories
-                            found_toolchain = False
-                            if exists(existing_pkg_dir):
-                                for item in os.listdir(existing_pkg_dir):
-                                    subdir = join(existing_pkg_dir, item)
-                                    if os.path.isdir(subdir):
-                                        gcc_path_sub = join(subdir, "bin", TOOLCHAIN_PREFIX + "gcc")
-                                        if exists(gcc_path_sub):
-                                            TOOLCHAIN_DIR = subdir
-                                            TOOLCHAIN_PREFIX = join(TOOLCHAIN_DIR, "bin", TOOLCHAIN_PREFIX)
-                                            print("Using PlatformIO toolchain package (from GitHub): %s" % TOOLCHAIN_DIR)
-                                            found_toolchain = True
-                                            break
-                            if found_toolchain:
-                                existing_pkg_dir = None  # Mark as found
-                            else:
-                                existing_pkg_dir = None  # Not found, will download
-                    else:
-                        existing_pkg_dir = None
                 except Exception:
-                    existing_pkg_dir = None
+                    pass
                 
                 # Calculate packages directory - PlatformIO stores in .platformio/packages/
                 # Do this outside the if block so pkg_install_dir is always defined
@@ -200,22 +168,8 @@ if TOOLCHAIN_DIR is None:
                 
                 # If not already found, download and install
                 if not TOOLCHAIN_DIR:
-                    # Check if already installed
-                    # First, try to find the compiler in case it's already there
-                    found_compiler = False
-                    if exists(pkg_install_dir):
-                        # Check root level
-                        if exists(join(pkg_install_dir, "bin", TOOLCHAIN_PREFIX + "gcc")):
-                            found_compiler = True
-                        else:
-                            # Check subdirectories
-                            for item in os.listdir(pkg_install_dir):
-                                subdir = join(pkg_install_dir, item)
-                                if os.path.isdir(subdir) and exists(join(subdir, "bin", TOOLCHAIN_PREFIX + "gcc")):
-                                    found_compiler = True
-                                    break
-                    
-                    if not found_compiler:
+                    # Check if already installed in packages directory
+                    if not find_toolchain_in_dir(pkg_install_dir):
                         print("Downloading toolchain from GitHub releases...")
                         print("  URL: %s" % package_url)
                         print("  Installing to: %s" % pkg_install_dir)
@@ -241,50 +195,19 @@ if TOOLCHAIN_DIR is None:
                             # Remove temp file
                             os.unlink(zip_path)
                             
-                            print("Toolchain installed successfully from GitHub: %s" % pkg_install_dir)
+                            print("Toolchain installed successfully.")
                         except Exception as download_error:
                             print("ERROR: Failed to download/install toolchain: %s" % str(download_error))
                             import traceback
                             traceback.print_exc()
                             raise
                     
-                    # Find the actual toolchain root (may be in a subdirectory)
-                    if exists(join(pkg_install_dir, "bin", TOOLCHAIN_PREFIX + "gcc")):
-                        TOOLCHAIN_DIR = pkg_install_dir
-                    else:
-                        # Look for bin directory in subdirectories (e.g., powerpc-eabivle-4_9/bin)
-                        if exists(pkg_install_dir):
-                            for item in os.listdir(pkg_install_dir):
-                                subdir = join(pkg_install_dir, item)
-                                if os.path.isdir(subdir) and exists(join(subdir, "bin", TOOLCHAIN_PREFIX + "gcc")):
-                                    TOOLCHAIN_DIR = subdir
-                                    break
-                
-                # Final check - find toolchain if not already found
-                if not TOOLCHAIN_DIR:
-                    # Find the actual toolchain root (may be in a subdirectory)
-                    # Check root level first
-                    gcc_path_root = join(pkg_install_dir, "bin", TOOLCHAIN_PREFIX + "gcc")
-                    if exists(gcc_path_root):
-                        TOOLCHAIN_DIR = pkg_install_dir
-                    else:
-                        # Look for bin directory in subdirectories (e.g., powerpc-eabivle-4_9/bin)
-                        if exists(pkg_install_dir):
-                            for item in os.listdir(pkg_install_dir):
-                                subdir = join(pkg_install_dir, item)
-                                if os.path.isdir(subdir) and exists(join(subdir, "bin", TOOLCHAIN_PREFIX + "gcc")):
-                                    TOOLCHAIN_DIR = subdir
-                                    break
-                
-                # Verify toolchain was found and set prefix correctly
-                if TOOLCHAIN_DIR:
-                    gcc_path_final = join(TOOLCHAIN_DIR, "bin", TOOLCHAIN_PREFIX + "gcc")
-                    if exists(gcc_path_final):
+                    # Find toolchain after installation
+                    found_dir = find_toolchain_in_dir(pkg_install_dir)
+                    if found_dir:
+                        TOOLCHAIN_DIR = found_dir
                         TOOLCHAIN_PREFIX = join(TOOLCHAIN_DIR, "bin", TOOLCHAIN_PREFIX)
-                        print("Using PlatformIO toolchain package (downloaded from GitHub): %s" % TOOLCHAIN_DIR)
-                else:
-                    # Toolchain downloaded but compiler not found - this shouldn't happen
-                    print("Warning: Toolchain downloaded but compiler not found at expected path")
+                        print("Using PlatformIO toolchain package: %s" % TOOLCHAIN_DIR)
     except Exception as install_error:
         # Package installation failed, continue to system toolchain check
         import traceback
