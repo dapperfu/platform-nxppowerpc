@@ -1,0 +1,30 @@
+{
+  "name": "tool-pegdbserver-power",
+  "version": "1.7.2.201709281658",
+  "description": "P&E Microcomputer Systems GDB Server for Power Architecture microcontrollers",
+  "keywords": [
+    "platformio",
+    "tools",
+    "debugger",
+    "opensda",
+    "pemicro",
+    "powerpc",
+    "e200",
+    "mpc57xx",
+    "mpc56xx",
+    "nxp",
+    "gdb"
+  ],
+  "homepage": "https://www.pemicro.com",
+  "license": "Proprietary",
+  "system": [
+    "linux_x86_64"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dapperfu/platform-nxppowerpc.git"
+  },
+  "urls": {
+    "linux_x86_64": "https://github.com/dapperfu/platform-nxppowerpc/archive/refs/heads/main.zip"
+  }
+}

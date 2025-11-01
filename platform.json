@@ -40,6 +40,10 @@
       "type": "toolchain",
       "version": "4.9.4.2724867"
     },
+    "tool-pegdbserver-power": {
+      "type": "tool",
+      "version": "1.7.2.201709281658"
+    },
     "framework-freertos": {
       "type": "framework",
       "optional": true,
