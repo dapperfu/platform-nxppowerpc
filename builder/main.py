@@ -73,6 +73,8 @@ SYSTEM_TOOLCHAIN_PATHS.extend(standard_paths)
 # didn't run or failed.
 TOOLCHAIN_DIR = None
 try:
+    # PlatformIO should automatically install packages listed in platform.json
+    # when the platform is used. Check if the toolchain package is already installed.
     TOOLCHAIN_DIR = platform.get_package_dir("toolchain-powerpc-eabivle")
     # Verify toolchain directory exists and has the compiler
     # Check both root/bin and nested subdirectories (e.g., powerpc-eabivle-4_9/bin)
@@ -103,9 +105,11 @@ try:
 except Exception:
     TOOLCHAIN_DIR = None
 
-# If package not found, manually download and install from GitHub releases
-# PlatformIO's dependency resolution doesn't automatically use tools/package.json URLs
-# for git-installed platforms, so we download directly from GitHub and install it.
+# Fallback: If package not found (shouldn't happen if platform.json is properly configured),
+# manually download and install from GitHub releases. This handles edge cases like:
+# - Platform installed before toolchain was added to platform.json
+# - PlatformIO dependency resolution issues
+# - Git-installed platforms that haven't been properly initialized
 if TOOLCHAIN_DIR is None:
     try:
         tools_package_json = join(

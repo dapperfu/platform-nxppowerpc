@@ -36,6 +36,9 @@
     }
   },
   "packages": {
+    "toolchain-powerpc-eabivle": {
+      "type": "toolchain"
+    },
     "framework-freertos": {
       "type": "framework",
       "optional": true,
