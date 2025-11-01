@@ -58,6 +58,55 @@ This package should be automatically installed by PlatformIO when using the plat
 2. Extract and place in a standard location
 3. The platform builder will detect it automatically
 
+## Building the PlatformIO Package
+
+This package includes a Makefile to build the PlatformIO toolchain package from the golden source binaries.
+
+### Quick Start
+
+```bash
+cd tools/toolchain-powerpc-eabivle
+make all
+```
+
+This will:
+1. Download the golden source binary from GitHub releases
+2. Extract the toolchain
+3. Package it for PlatformIO
+4. Calculate SHA256 checksum
+5. Update `package.json` with the checksum
+6. Verify the package
+
+### Available Targets
+
+```bash
+make help          # Show available targets
+make download      # Download golden source binary
+make extract       # Extract downloaded toolchain
+make package      # Create PlatformIO package zip
+make update-sha256 # Calculate and update SHA256 in package.json
+make verify       # Verify package contents
+make clean        # Remove build artifacts
+make rebuild      # Clean and rebuild everything
+make test         # Test the built package
+```
+
+### Output
+
+The build process creates:
+- `build/toolchain-powerpc-eabivle.zip` - PlatformIO package archive
+- `build/toolchain-powerpc-eabivle.zip.sha256` - SHA256 checksum file
+- Updated `package.json` with SHA256 checksum
+
+### Requirements
+
+- Make
+- Python 3 (for JSON manipulation)
+- wget or curl (for downloading)
+- unzip (for extraction)
+- zip (for package creation)
+- sha256sum or shasum (for checksum calculation)
+
 ## License
 
 This toolchain is provided under GPL-3.0 license as part of the GCC toolchain.
