@@ -1,0 +1,23 @@
+{
+  "build": {
+    "cpu": "e200z4",
+    "f_cpu": "200000000L",
+    "mcu": "mpc5775k",
+    "extra_flags": "-DMPC5775K"
+  },
+  "debug": {
+    "tools": {}
+  },
+  "frameworks": [
+    "baremetal",
+    "freertos"
+  ],
+  "name": "NXP MPC-5775K",
+  "upload": {
+    "maximum_ram_size": 512000,
+    "maximum_size": 8388608
+  },
+  "url": "https://www.nxp.com/products/processors-and-microcontrollers/power-architecture-processors/powerpc-processors",
+  "vendor": "NXP"
+}
+

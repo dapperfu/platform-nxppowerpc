@@ -1,0 +1,23 @@
+{
+  "build": {
+    "cpu": "e200z4",
+    "f_cpu": "120000000L",
+    "mcu": "mpc5646c",
+    "extra_flags": "-DMPC5646C"
+  },
+  "debug": {
+    "tools": {}
+  },
+  "frameworks": [
+    "baremetal",
+    "freertos"
+  ],
+  "name": "NXP MPC-5646C",
+  "upload": {
+    "maximum_ram_size": 256000,
+    "maximum_size": 4194304
+  },
+  "url": "https://www.nxp.com/products/processors-and-microcontrollers/power-architecture-processors/powerpc-processors",
+  "vendor": "NXP"
+}
+

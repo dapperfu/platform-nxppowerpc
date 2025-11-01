@@ -1,0 +1,28 @@
+{
+  "name": "toolchain-powerpc-eabivle",
+  "version": "4.9.4.2724867",
+  "description": "GCC 4.9.4 PowerPC EABI VLE toolchain for e200 cores",
+  "keywords": [
+    "toolchain",
+    "compiler",
+    "powerpc",
+    "eabivle",
+    "gcc"
+  ],
+  "homepage": "https://github.com/dapperfu/platform-nxppowerpc",
+  "license": "GPL-3.0",
+  "system": [
+    "linux_x86_64"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dapperfu/platform-nxppowerpc.git"
+  },
+  "urls": {
+    "linux_x86_64": "https://github.com/dapperfu/platform-nxppowerpc/releases/download/v.0.0.1/gcc-4.9.4-Ee200-eabivle-x86_64-linux-g2724867.zip"
+  },
+  "sha256": {
+    "linux_x86_64": ""
+  }
+}
+
