@@ -7,7 +7,12 @@ TOOLCHAIN_VERSION := 4.9.4.2724867
 GOLDEN_SOURCE_URL := https://github.com/dapperfu/platform-nxppowerpc/releases/download/v.0.0.1/gcc-4.9.4-Ee200-eabivle-x86_64-linux-g2724867.zip
 GOLDEN_SOURCE_FILE := gcc-4.9.4-Ee200-eabivle-x86_64-linux-g2724867.zip
 
+# S32DS Installer path (optional, for extracting from installer)
+S32DS_INSTALLER_ROOT := /home/jed/Downloads/extract_S32DS_Power_Linux/installer
+
 SCRIPT_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+TOOLS_DIR := ${SCRIPT_DIR}/..
+EXTRACT_SCRIPT := ${TOOLS_DIR}/extract_toolchain.py
 BUILD_DIR := ${SCRIPT_DIR}/build
 DOWNLOAD_DIR := ${BUILD_DIR}/download
 EXTRACT_DIR := ${BUILD_DIR}/extract
@@ -21,13 +26,14 @@ WGET := wget
 UNZIP := unzip
 ZIP := zip
 
-.PHONY: help clean download extract package verify update-sha256 rebuild test all
+.PHONY: help clean download extract package verify update-sha256 rebuild test all from-installer
 
 help:
 	@echo "PlatformIO Toolchain Package Builder"
 	@echo ""
 	@echo "Targets:"
 	@echo "  all          - Build complete package (download, extract, package, verify)"
+	@echo "  from-installer - Extract and package from S32DS installer (use S32DS_INSTALLER_ROOT)"
 	@echo "  download    - Download golden source binary"
 	@echo "  extract     - Extract downloaded toolchain"
 	@echo "  package     - Create PlatformIO package zip"
@@ -41,6 +47,7 @@ help:
 	@echo "  TOOLCHAIN_NAME=${TOOLCHAIN_NAME}"
 	@echo "  TOOLCHAIN_VERSION=${TOOLCHAIN_VERSION}"
 	@echo "  GOLDEN_SOURCE_URL=${GOLDEN_SOURCE_URL}"
+	@echo "  S32DS_INSTALLER_ROOT=${S32DS_INSTALLER_ROOT}"
 	@echo "  BUILD_DIR=${BUILD_DIR}"
 
 all: clean download extract package update-sha256 verify
@@ -48,6 +55,39 @@ all: clean download extract package update-sha256 verify
 	@echo "✓ Package build complete!"
 	@echo "  Package: ${OUTPUT_ZIP}"
 	@echo "  SHA256:  ${OUTPUT_SHA256}"
+
+from-installer: clean
+	@echo "Extracting toolchain from S32DS installer..."
+	@if [ ! -d "${S32DS_INSTALLER_ROOT}" ]; then \
+		echo "✗ S32DS installer directory not found: ${S32DS_INSTALLER_ROOT}"; \
+		echo "  Set S32DS_INSTALLER_ROOT variable to point to extracted installer"; \
+		exit 1; \
+	fi
+	@mkdir -p ${BUILD_DIR}
+	@${PYTHON} ${EXTRACT_SCRIPT} "${S32DS_INSTALLER_ROOT}" "${BUILD_DIR}" ${TOOLCHAIN_NAME}
+	@echo ""
+	@echo "Updating package.json with SHA256..."
+	@if [ -f "${BUILD_DIR}/${TOOLCHAIN_NAME}.metadata.json" ]; then \
+		SHA256=$$(${PYTHON} -c "import json; f=open('${BUILD_DIR}/${TOOLCHAIN_NAME}.metadata.json'); d=json.load(f); print(d['sha256'])"); \
+		${PYTHON} -c " \
+			import json, sys; \
+			f = open('${PACKAGE_JSON}', 'r'); \
+			data = json.load(f); \
+			f.close(); \
+			data['sha256']['linux_x86_64'] = '$${SHA256}'; \
+			data['version'] = '$$(${PYTHON} -c \"import json; f=open('${BUILD_DIR}/${TOOLCHAIN_NAME}.metadata.json'); d=json.load(f); print(d['version'])\")'; \
+			f = open('${PACKAGE_JSON}', 'w'); \
+			json.dump(data, f, indent=2); \
+			f.write('\n'); \
+			f.close(); \
+		"; \
+		echo "✓ SHA256 and version updated in package.json"; \
+	else \
+		echo "⚠ Metadata file not found, run update-sha256 manually"; \
+	fi
+	@echo ""
+	@echo "✓ Package build complete from installer!"
+	@echo "  Package: ${BUILD_DIR}/${TOOLCHAIN_NAME}.zip"
 
 download: ${DOWNLOAD_DIR}/${GOLDEN_SOURCE_FILE}
 
