@@ -332,37 +332,60 @@ env.Append(
     ],
 )
 
-# Find toolchain library path and add to LIBPATH
-if TOOLCHAIN_DIR:
-    cpu_variant = board.get('build.cpu', 'e200z4')
-    # Try multiple possible library base paths
-    # Libraries might be at package root or in subdirectory
-    toolchain_package_root = TOOLCHAIN_DIR
-    # If TOOLCHAIN_DIR is a subdirectory (e.g., powerpc-eabivle-4_9), go up to package root
-    if os.path.basename(TOOLCHAIN_DIR).startswith("powerpc-eabivle"):
-        toolchain_package_root = join(TOOLCHAIN_DIR, "..")
-    
-    # Try library paths at package root level
-    toolchain_lib_base_1 = join(toolchain_package_root, "e200_ewl2", "lib")
-    # Also try within the subdirectory if TOOLCHAIN_DIR is a subdirectory
-    toolchain_lib_base_2 = join(TOOLCHAIN_DIR, "e200_ewl2", "lib") if TOOLCHAIN_DIR != toolchain_package_root else None
-    
-    # Try to find library path for this CPU variant
-    potential_lib_paths = []
-    for lib_base in [toolchain_lib_base_1, toolchain_lib_base_2]:
-        if lib_base:
-            potential_lib_paths.extend([
-                join(lib_base, cpu_variant),
-                join(lib_base, cpu_variant, "spe"),
-                join(lib_base, "e200z6"),  # Fallback
-            ])
+# Find EWL library path and add to LIBPATH
+# Priority: 1) library-ewl-powerpc-eabivle package, 2) toolchain package (backward compatibility)
+cpu_variant = board.get('build.cpu', 'e200z4')
+lib_base_path = None
+
+# Priority 1: Try library-ewl-powerpc-eabivle package
+try:
+    ewl_package_dir = platform.get_package_dir("library-ewl-powerpc-eabivle")
+    if ewl_package_dir and isdir(ewl_package_dir):
+        lib_base_path = join(ewl_package_dir, "e200_ewl2", "lib")
+        print(f"Using EWL libraries from library package: {ewl_package_dir}")
+except Exception:
+    pass
+
+# Priority 2: Fall back to toolchain package (backward compatibility)
+if not lib_base_path or not exists(lib_base_path):
+    if TOOLCHAIN_DIR:
+        # Try multiple possible library base paths in toolchain package
+        toolchain_package_root = TOOLCHAIN_DIR
+        # If TOOLCHAIN_DIR is a subdirectory (e.g., powerpc-eabivle-4_9), go up to package root
+        if os.path.basename(TOOLCHAIN_DIR).startswith("powerpc-eabivle"):
+            toolchain_package_root = join(TOOLCHAIN_DIR, "..")
+        
+        # Try library paths at package root level
+        toolchain_lib_base_1 = join(toolchain_package_root, "e200_ewl2", "lib")
+        # Also try within the subdirectory if TOOLCHAIN_DIR is a subdirectory
+        toolchain_lib_base_2 = join(TOOLCHAIN_DIR, "e200_ewl2", "lib") if TOOLCHAIN_DIR != toolchain_package_root else None
+        
+        # Check which one exists
+        for base in [toolchain_lib_base_1, toolchain_lib_base_2]:
+            if base and exists(base):
+                lib_base_path = base
+                print(f"Using EWL libraries from toolchain package: {base}")
+                break
+
+# Try to find library path for this CPU variant
+if lib_base_path:
+    potential_lib_paths = [
+        join(lib_base_path, cpu_variant),
+        join(lib_base_path, cpu_variant, "spe"),
+        join(lib_base_path, "e200z6"),  # Fallback
+    ]
     
     for lib_path in potential_lib_paths:
         expanded_lib_path = env.subst(lib_path)
         if exists(expanded_lib_path):
             env.Append(LIBPATH=[lib_path])
             env.Append(LIBS=["m", "c"])
+            print(f"Found EWL libraries for {cpu_variant}: {lib_path}")
             break
+    else:
+        print(f"Warning: EWL libraries not found for {cpu_variant} in {lib_base_path}")
+else:
+    print("Warning: EWL library package not found. Standard libraries may not link correctly.")
 
 # Allow user to override via pre:script
 if env.get("PROGNAME", "program") == "program":

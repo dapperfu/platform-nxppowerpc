@@ -1,0 +1,34 @@
+{
+  "name": "library-ewl-powerpc-eabivle",
+  "version": "2.0.0",
+  "description": "Embedded Workbench Library (EWL) runtime libraries for PowerPC e200 cores",
+  "keywords": [
+    "library",
+    "ewl",
+    "powerpc",
+    "eabivle",
+    "runtime",
+    "c",
+    "c++",
+    "e200",
+    "e200z0",
+    "e200z4",
+    "e200z6"
+  ],
+  "homepage": "https://github.com/dapperfu/platform-nxppowerpc",
+  "license": "Proprietary",
+  "system": [
+    "linux_x86_64"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dapperfu/platform-nxppowerpc.git"
+  },
+  "urls": {
+    "linux_x86_64": "PLACEHOLDER_URL"
+  },
+  "sha256": {
+    "linux_x86_64": "PLACEHOLDER_SHA256"
+  }
+}
+
