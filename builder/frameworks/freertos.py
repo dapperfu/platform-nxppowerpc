@@ -60,7 +60,32 @@ else:
     # Assume flat structure
     FREERTOS_SRC_DIR = FRAMEWORK_DIR
 
-FREERTOS_PORT_DIR = join(FREERTOS_SRC_DIR, "portable", "GCC", "PowerPC")
+# Try NXP-specific PowerPC_Z4 port first (for MPC57xx boards), then fall back to generic PowerPC
+FREERTOS_PORT_DIR = None
+POWERPC_PORT_NAME = None
+
+# Check for NXP-specific PowerPC_Z4 port (recommended for MPC57xx)
+powerpc_z4_port = join(FREERTOS_SRC_DIR, "portable", "GCC", "PowerPC_Z4")
+if isdir(powerpc_z4_port) and exists(join(powerpc_z4_port, "port.c")):
+    FREERTOS_PORT_DIR = powerpc_z4_port
+    POWERPC_PORT_NAME = "PowerPC_Z4"
+    print("Found NXP PowerPC_Z4 port (MPC57xx-optimized)")
+else:
+    # Fall back to generic PowerPC port (mainline FreeRTOS)
+    powerpc_port = join(FREERTOS_SRC_DIR, "portable", "GCC", "PowerPC")
+    if isdir(powerpc_port) and exists(join(powerpc_port, "port.c")):
+        FREERTOS_PORT_DIR = powerpc_port
+        POWERPC_PORT_NAME = "PowerPC"
+        print("Found generic PowerPC port (mainline FreeRTOS)")
+        print("Warning: Generic PowerPC port may not support MPC57xx VLE instructions")
+    else:
+        raise Exception(
+            "No PowerPC FreeRTOS port found. Expected either:\n"
+            "  - portable/GCC/PowerPC_Z4/ (NXP MPC57xx optimized)\n"
+            "  - portable/GCC/PowerPC/ (generic/mainline)\n\n"
+            "For MPC57xx boards, use NXP FreeRTOS release from:\n"
+            "  https://github.com/dapperfu/platform-nxppowerpc/releases/download/v.0.0.1/freertos-9.0.0_MPC57XXX_public_rel_1.zip"
+        )
 
 # Add FreeRTOS include paths
 env.Append(
@@ -87,29 +112,26 @@ freertos_sources = [
     join(FREERTOS_SRC_DIR, "timers.c"),
 ]
 
-# Add port-specific sources (check if PowerPC port exists, otherwise use generic)
+# Add port-specific sources
 port_sources = [
     join(FREERTOS_PORT_DIR, "port.c"),
 ]
 
-# Check if port.c exists, if not, we may need to use a different port
-# For now, assume PowerPC port exists
-for source in port_sources:
-    if not isdir(FREERTOS_PORT_DIR):
-        # If PowerPC port doesn't exist, fall back to a generic approach
-        # In practice, users may need to provide their own port
-        print("Warning: PowerPC FreeRTOS port not found. You may need to provide your own port implementation.")
-        break
+# Check for assembly file (NXP port uses portasm.s)
+portasm_file = join(FREERTOS_PORT_DIR, "portasm.s")
+if exists(portasm_file):
+    port_sources.append(portasm_file)
+    print("Found portasm.s (NXP VLE assembly port)")
 
 # Add FreeRTOS source files directly to the build - compile specific files only
 # Filter out sources that don't exist
 valid_freertos_sources = [env.subst(s) for s in freertos_sources if exists(s)]
 valid_port_sources = [env.subst(s) for s in port_sources if exists(s)]
 
-# Create source filter to exclude all portable ports except PowerPC
+# Create source filter to exclude all portable ports except the selected one
 src_filter = [
     "-<portable/>",  # Exclude all portable directories
-    "+<portable/GCC/PowerPC/>",  # Include only PowerPC port
+    "+<portable/GCC/%s/>" % POWERPC_PORT_NAME,  # Include only selected PowerPC port
 ]
 
 # Add FreeRTOS sources with filter
@@ -129,5 +151,6 @@ env.Append(
 print("FreeRTOS framework initialized for NXP PowerPC VLE")
 print("  - FreeRTOS Source: %s" % FREERTOS_SRC_DIR)
 print("  - Port Directory: %s" % FREERTOS_PORT_DIR)
+print("  - Port Name: %s" % POWERPC_PORT_NAME)
 
 
