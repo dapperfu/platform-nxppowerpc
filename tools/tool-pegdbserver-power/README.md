@@ -58,42 +58,36 @@ This tool is automatically installed by PlatformIO when using the `nxppowerpc` p
 
 ## Building from Source
 
-To build this package manually:
+To build this package from S32DS installer:
 
 ```bash
-cd build_platformio_pegdbserver
-python3 build_pio_package.py --s32ds-root /path/to/s32ds --output-dir /path/to/output
+cd tools/tool-pegdbserver-power
+python3 build.py /path/to/extracted/s32ds/installer --update-package-json
 ```
 
-Or using the Makefile:
+Or use the master build script:
 
 ```bash
-cd build_platformio_pegdbserver
-make package S32DS_ROOT=/path/to/s32ds
+python3 tools/build_all_packages.py \
+  /path/to/extracted/s32ds/installer \
+  --output /tmp/pio-packages \
+  --platform-root /projects/platformio/platform-nxppowerpc
 ```
 
-## Local Testing
+## Building from Extracted Installer
 
-For local testing with a specific S32DS installation, the package can be built and configured to use a local file:// URL:
+The package can be built directly from an extracted S32DS installer:
 
 ```bash
-# Build the package from local S32DS installation
-cd /projects/platformio/platform-nxppowerpc
-python3 build_platformio_pegdbserver/build_pio_package.py \
-  --s32ds-root /home/jed/NXP/S32DS_Power_v2017.R1 \
-  --output-dir tools/tool-pegdbserver-power/package \
-  --no-archive
+# Build the package from extracted installer
+cd tools/tool-pegdbserver-power
+python3 build.py \
+  /home/jed/Downloads/extract_S32DS_Power_Linux/installer \
+  --output build \
+  --update-package-json
 
-# Create zip archive
-cd tools/tool-pegdbserver-power/package
-zip -r tool-pegdbserver-power.zip tool-pegdbserver-power/
-
-# Update package.json to use file:// URL (currently configured for local testing)
-# The package.json urls field should point to:
-# file:///projects/platformio/platform-nxppowerpc/tools/tool-pegdbserver-power/package/tool-pegdbserver-power.zip
+# The package.json will be updated with file:// URL and SHA256
 ```
-
-The package is currently configured for local testing using the S32DS installation at `/home/jed/NXP/S32DS_Power_v2017.R1`.
 
 ## License
 

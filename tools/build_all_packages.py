@@ -7,7 +7,7 @@ tool packages from an extracted S32 Design Studio installer.
 """
 
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 import sys
 import argparse
 import json

@@ -60,52 +60,33 @@ This package should be automatically installed by PlatformIO when using the plat
 
 ## Building the PlatformIO Package
 
-This package includes a Makefile to build the PlatformIO toolchain package from the golden source binaries.
+This package includes a Python build script to build the PlatformIO toolchain package from S32DS installer or golden source binaries.
 
-### Quick Start
+### Building from S32DS Installer
 
 ```bash
 cd tools/toolchain-powerpc-eabivle
-make all
+python3 build.py /path/to/extracted/s32ds/installer --update-package-json
 ```
 
 This will:
-1. Download the golden source binary from GitHub releases
-2. Extract the toolchain
-3. Package it for PlatformIO
-4. Calculate SHA256 checksum
-5. Update `package.json` with the checksum
-6. Verify the package
-
-### Available Targets
-
-```bash
-make help          # Show available targets
-make download      # Download golden source binary
-make extract       # Extract downloaded toolchain
-make package      # Create PlatformIO package zip
-make update-sha256 # Calculate and update SHA256 in package.json
-make verify       # Verify package contents
-make clean        # Remove build artifacts
-make rebuild      # Clean and rebuild everything
-make test         # Test the built package
-```
+1. Extract the toolchain from the S32DS installer
+2. Package it for PlatformIO
+3. Calculate SHA256 checksum
+4. Update `package.json` with the checksum and version
 
 ### Output
 
 The build process creates:
 - `build/toolchain-powerpc-eabivle.zip` - PlatformIO package archive
-- `build/toolchain-powerpc-eabivle.zip.sha256` - SHA256 checksum file
-- Updated `package.json` with SHA256 checksum
+- `build/toolchain-powerpc-eabivle.metadata.json` - Package metadata including SHA256
+- Updated `package.json` with SHA256 checksum (if `--update-package-json` is used)
 
 ### Requirements
 
-- Make
-- Python 3 (for JSON manipulation)
-- wget or curl (for downloading)
-- unzip (for extraction)
-- zip (for package creation)
-- sha256sum or shasum (for checksum calculation)
+- Python 3.6+
+- Standard library modules (no external dependencies)
+- zip/unzip (for package creation and extraction)
 
 ## License
 

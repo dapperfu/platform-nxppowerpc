@@ -87,27 +87,33 @@ python3 tools/build_all_packages.py \
   --output /tmp/pio-packages
 ```
 
-## Using Makefiles
+## Building Individual Packages
 
-Each tool package directory has a Makefile with a `from-installer` target.
+Each tool package directory has a Python build script.
 
 ### Toolchain Package
 
 ```bash
 cd tools/toolchain-powerpc-eabivle
-make from-installer S32DS_INSTALLER_ROOT=/home/jed/Downloads/extract_S32DS_Power_Linux/installer
+python3 build.py \
+  /home/jed/Downloads/extract_S32DS_Power_Linux/installer \
+  --output build \
+  --update-package-json
 ```
 
 This will:
 1. Extract the toolchain from the installer
 2. Create a PlatformIO package zip file
-3. Update `package.json` with SHA256 and version
+3. Update `package.json` with SHA256 and version (if `--update-package-json` is used)
 
 ### PEGDBServer Package
 
 ```bash
 cd tools/tool-pegdbserver-power
-make from-installer S32DS_INSTALLER_ROOT=/home/jed/Downloads/extract_S32DS_Power_Linux/installer
+python3 build.py \
+  /home/jed/Downloads/extract_S32DS_Power_Linux/installer \
+  --output build \
+  --update-package-json
 ```
 
 ## Package Structure
@@ -161,12 +167,12 @@ tool-pegdbserver-power.zip
      --output /tmp/pio-packages \
      --platform-root /projects/platformio/platform-nxppowerpc
    
-   # Option 2: Use individual Makefiles
+   # Option 2: Use individual build scripts
    cd tools/toolchain-powerpc-eabivle
-   make from-installer S32DS_INSTALLER_ROOT=/home/jed/Downloads/extract_S32DS_Power_Linux/installer
+   python3 build.py /home/jed/Downloads/extract_S32DS_Power_Linux/installer --update-package-json
    
    cd ../tool-pegdbserver-power
-   make from-installer S32DS_INSTALLER_ROOT=/home/jed/Downloads/extract_S32DS_Power_Linux/installer
+   python3 build.py /home/jed/Downloads/extract_S32DS_Power_Linux/installer --update-package-json
    ```
 
 4. **Update Package URLs** (if using local packages)
