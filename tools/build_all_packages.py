@@ -16,6 +16,7 @@ import subprocess
 from analyze_s32ds_installer import S32DSInstallerAnalyzer
 from extract_toolchain import ToolchainExtractor
 from extract_pegdbserver import PegdbServerExtractor
+import subprocess
 
 
 class PackageBuilder:
@@ -95,6 +96,51 @@ class PackageBuilder:
 
         return zip_path
 
+    def build_ewl_library(self) -> Path:
+        """
+        Build EWL library package.
+
+        Returns
+        -------
+        Path
+            Path to created package zip file
+        """
+        print("\n" + "=" * 70)
+        print("Building EWL Library Package")
+        print("=" * 70)
+
+        output_dir = self.output_base / "ewl_library"
+        build_script = Path(__file__).parent / "library-ewl-powerpc-eabivle" / "build.py"
+        
+        if not build_script.exists():
+            raise FileNotFoundError(
+                f"EWL library build script not found: {build_script}"
+            )
+
+        # Run the build script
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(build_script),
+                str(self.installer_root),
+                "--output",
+                str(output_dir),
+                "--update-package-json",
+            ],
+            capture_output=False,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            raise RuntimeError(f"EWL library build failed with code {result.returncode}")
+
+        # Find the created zip file
+        zip_path = output_dir / "library-ewl-powerpc-eabivle.zip"
+        if not zip_path.exists():
+            raise FileNotFoundError(f"Expected zip file not found: {zip_path}")
+
+        return zip_path
+
     def build_all(self) -> Dict[str, Optional[Path]]:
         """
         Build all packages.
@@ -142,6 +188,17 @@ class PackageBuilder:
             import traceback
             traceback.print_exc()
             results["pegdbserver"] = None
+
+        # Build EWL library
+        ewl_zip: Optional[Path] = None
+        try:
+            ewl_zip = self.build_ewl_library()
+            results["ewl_library"] = ewl_zip
+        except Exception as e:
+            print(f"ERROR: Failed to build EWL library: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            results["ewl_library"] = None
 
         # Print summary
         print("\n" + "=" * 70)
@@ -255,6 +312,11 @@ def main() -> int:
         action="store_true",
         help="Only build pegdbserver package",
     )
+    parser.add_argument(
+        "--ewl-only",
+        action="store_true",
+        help="Only build EWL library package",
+    )
 
     args = parser.parse_args()
 
@@ -273,6 +335,8 @@ def main() -> int:
             builder.build_toolchain()
         elif args.pegdbserver_only:
             builder.build_pegdbserver()
+        elif args.ewl_only:
+            builder.build_ewl_library()
         else:
             builder.build_all()
         return 0
