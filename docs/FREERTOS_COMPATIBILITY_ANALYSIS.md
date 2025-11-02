@@ -76,9 +76,13 @@ This path will **NOT** find the NXP port, which is in `portable/GCC/PowerPC_Z4/`
 - Vendor lock-in
 
 **Implementation:**
-- Update `freertos.py` to support `PowerPC_Z4` port directory
-- Package the NXP FreeRTOS release as a PlatformIO framework package
-- Or allow users to place it in `lib/FreeRTOS/`
+- Update `freertos.py` to support `PowerPC_Z4` port directory ✅ (Done)
+- Package the NXP FreeRTOS release as a PlatformIO framework package:
+  - Package name: `framework-freertos-nxp-mpc57xx`
+  - Type: `framework`
+  - Version: `9.0.0.1` (based on `freertos-9.0.0_MPC57XXX_public_rel_1`)
+  - Add to `platform.json` packages section
+- Or allow users to place it in `lib/FreeRTOS/` ✅ (Already supported)
 
 ### Option 2: Adapt Mainline FreeRTOS
 
@@ -126,6 +130,27 @@ If newer FreeRTOS features are needed, consider:
 1. Using the NXP port as a base for porting to newer FreeRTOS versions
 2. Contributing MPC57xx support upstream to mainline FreeRTOS
 3. Maintaining a fork with both NXP hardware support and newer kernel features
+
+## Package Naming
+
+If the NXP FreeRTOS release were packaged as a PlatformIO framework package, it would be named:
+
+**`framework-freertos-nxp-mpc57xx`**
+
+This follows PlatformIO naming conventions:
+- Frameworks use `framework-<name>` prefix
+- Distinguishes from mainline `framework-freertos` package
+- Indicates it's NXP-specific for MPC57xx boards
+- Version would be `9.0.0.1` (based on release name `freertos-9.0.0_MPC57XXX_public_rel_1`)
+
+The package would be added to `platform.json` packages section:
+```json
+"framework-freertos-nxp-mpc57xx": {
+  "type": "framework",
+  "optional": true,
+  "version": "9.0.0.1"
+}
+```
 
 ## References
 
