@@ -20,6 +20,8 @@ This builder configures FreeRTOS source files and port files for PowerPC VLE.
 """
 
 from os.path import isdir, join, exists
+import os
+import tempfile
 
 from SCons.Script import DefaultEnvironment
 
@@ -27,7 +29,55 @@ env = DefaultEnvironment()
 platform = env.PioPlatform()
 board = env.BoardConfig()
 
-# Try to get FreeRTOS from package, fallback to local lib directory
+# NXP FreeRTOS download URL (for auto-download if not found)
+NXP_FREERTOS_URL = "https://github.com/dapperfu/platform-nxppowerpc/releases/download/v.0.0.1/freertos-9.0.0_MPC57XXX_public_rel_1.zip"
+
+def download_and_extract_freertos(target_dir):
+    """Download and extract NXP FreeRTOS from GitHub releases."""
+    import urllib.request
+    import zipfile
+    
+    print("FreeRTOS not found. Downloading NXP FreeRTOS from GitHub releases...")
+    print("  URL: %s" % NXP_FREERTOS_URL)
+    print("  Installing to: %s" % target_dir)
+    
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as tmp_zip:
+            zip_path = tmp_zip.name
+        
+        print("  Downloading archive...")
+        urllib.request.urlretrieve(NXP_FREERTOS_URL, zip_path)
+        
+        print("  Extracting archive...")
+        os.makedirs(target_dir, exist_ok=True)
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(target_dir)
+        
+        # Remove temp file
+        os.unlink(zip_path)
+        
+        # The zip extracts to freertos-9.0.0_MPC57XXX_public_rel_1/FreeRTOS/
+        # The existing code expects either:
+        #   - lib/FreeRTOS/FreeRTOS/Source (if FRAMEWORK_DIR points to FreeRTOS/)
+        #   - lib/FreeRTOS/Source (if FRAMEWORK_DIR points to FreeRTOS/ already extracted)
+        # We'll extract to target_dir and return the extracted FreeRTOS directory
+        extracted_root = join(target_dir, "freertos-9.0.0_MPC57XXX_public_rel_1")
+        freertos_dir = join(extracted_root, "FreeRTOS")
+        
+        if isdir(freertos_dir):
+            print("NXP FreeRTOS downloaded and extracted successfully.")
+            # Return the FreeRTOS directory - the existing detection logic will handle it
+            return freertos_dir
+        else:
+            raise Exception("Extracted FreeRTOS directory structure not as expected at: %s" % freertos_dir)
+            
+    except Exception as download_error:
+        print("ERROR: Failed to download/extract FreeRTOS: %s" % str(download_error))
+        import traceback
+        traceback.print_exc()
+        raise
+
+# Try to get FreeRTOS from package, fallback to local lib directory, then auto-download
 FRAMEWORK_DIR = None
 try:
     FRAMEWORK_DIR = platform.get_package_dir("framework-freertos")
@@ -38,13 +88,24 @@ except Exception:
 
 if FRAMEWORK_DIR is None:
     # Try local lib directory using PlatformIO environment expansion
-    import os
     project_dir = env.subst("$PROJECT_DIR")
     local_freertos = os.path.join(project_dir, "lib", "FreeRTOS")
     if isdir(local_freertos):
         FRAMEWORK_DIR = local_freertos
     else:
-        raise Exception("FreeRTOS not found. Please install it as a PlatformIO package or place it in lib/FreeRTOS")
+        # Auto-download NXP FreeRTOS to lib/FreeRTOS
+        try:
+            FRAMEWORK_DIR = download_and_extract_freertos(local_freertos)
+        except Exception as e:
+            raise Exception(
+                "FreeRTOS not found and auto-download failed.\n"
+                "Please either:\n"
+                "  1. Install framework-freertos-nxp-mpc57xx package (when available)\n"
+                "  2. Manually download and extract to lib/FreeRTOS from:\n"
+                "     %s\n"
+                "  3. Place FreeRTOS source in lib/FreeRTOS/\n"
+                "Error: %s" % (NXP_FREERTOS_URL, str(e))
+            )
 
 if FRAMEWORK_DIR is None or not isdir(FRAMEWORK_DIR):
     raise Exception("FreeRTOS framework directory not found: %s" % FRAMEWORK_DIR)
