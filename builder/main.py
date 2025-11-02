@@ -22,7 +22,7 @@ Toolchain Source (Golden Source):
 https://github.com/dapperfu/platform-nxppowerpc/releases/download/v.0.0.1/gcc-4.9.4-Ee200-eabivle-x86_64-linux-g2724867.zip
 """
 
-from os.path import join, exists
+from os.path import join, exists, isdir
 import os
 
 from SCons.Script import (COMMAND_LINE_TARGETS, AlwaysBuild, Builder, Default,
