@@ -16,7 +16,6 @@ import subprocess
 from analyze_s32ds_installer import S32DSInstallerAnalyzer
 from extract_toolchain import ToolchainExtractor
 from extract_pegdbserver import PegdbServerExtractor
-import subprocess
 
 
 class PackageBuilder:
