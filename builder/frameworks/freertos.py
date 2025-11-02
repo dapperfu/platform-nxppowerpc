@@ -77,35 +77,61 @@ def download_and_extract_freertos(target_dir):
         traceback.print_exc()
         raise
 
-# Try to get FreeRTOS from package, fallback to local lib directory, then auto-download
+# Priority order: 1) PlatformIO package, 2) Auto-download from GitHub, 3) Local lib directory
 FRAMEWORK_DIR = None
+
+# Priority 1: Try PlatformIO package
 try:
-    FRAMEWORK_DIR = platform.get_package_dir("framework-freertos")
+    FRAMEWORK_DIR = platform.get_package_dir("framework-freertos-nxp-mpc57xx")
     if not isdir(FRAMEWORK_DIR):
         FRAMEWORK_DIR = None
 except Exception:
     pass
 
+# Also try generic framework-freertos package
 if FRAMEWORK_DIR is None:
-    # Try local lib directory using PlatformIO environment expansion
+    try:
+        FRAMEWORK_DIR = platform.get_package_dir("framework-freertos")
+        if not isdir(FRAMEWORK_DIR):
+            FRAMEWORK_DIR = None
+    except Exception:
+        pass
+
+# Priority 2: Auto-download from GitHub releases
+if FRAMEWORK_DIR is None:
+    project_dir = env.subst("$PROJECT_DIR")
+    local_freertos = os.path.join(project_dir, "lib", "FreeRTOS")
+    
+    # Check if already extracted
+    extracted_root = join(local_freertos, "freertos-9.0.0_MPC57XXX_public_rel_1")
+    freertos_dir = join(extracted_root, "FreeRTOS")
+    if isdir(freertos_dir):
+        FRAMEWORK_DIR = freertos_dir
+    else:
+        # Download and extract
+        try:
+            FRAMEWORK_DIR = download_and_extract_freertos(local_freertos)
+        except Exception as e:
+            print("Warning: Auto-download failed: %s" % str(e))
+            FRAMEWORK_DIR = None
+
+# Priority 3: Local lib directory (manual placement)
+if FRAMEWORK_DIR is None:
     project_dir = env.subst("$PROJECT_DIR")
     local_freertos = os.path.join(project_dir, "lib", "FreeRTOS")
     if isdir(local_freertos):
         FRAMEWORK_DIR = local_freertos
-    else:
-        # Auto-download NXP FreeRTOS to lib/FreeRTOS
-        try:
-            FRAMEWORK_DIR = download_and_extract_freertos(local_freertos)
-        except Exception as e:
-            raise Exception(
-                "FreeRTOS not found and auto-download failed.\n"
-                "Please either:\n"
-                "  1. Install framework-freertos-nxp-mpc57xx package (when available)\n"
-                "  2. Manually download and extract to lib/FreeRTOS from:\n"
-                "     %s\n"
-                "  3. Place FreeRTOS source in lib/FreeRTOS/\n"
-                "Error: %s" % (NXP_FREERTOS_URL, str(e))
-            )
+
+# Final check
+if FRAMEWORK_DIR is None:
+    raise Exception(
+        "FreeRTOS not found.\n"
+        "Please either:\n"
+        "  1. Install framework-freertos-nxp-mpc57xx package\n"
+        "  2. Ensure network access for auto-download from:\n"
+        "     %s\n"
+        "  3. Manually place FreeRTOS source in lib/FreeRTOS/" % NXP_FREERTOS_URL
+    )
 
 if FRAMEWORK_DIR is None or not isdir(FRAMEWORK_DIR):
     raise Exception("FreeRTOS framework directory not found: %s" % FRAMEWORK_DIR)

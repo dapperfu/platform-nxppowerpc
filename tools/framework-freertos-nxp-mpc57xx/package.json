@@ -1,0 +1,30 @@
+{
+  "name": "framework-freertos-nxp-mpc57xx",
+  "version": "9.0.0.1",
+  "description": "NXP FreeRTOS 9.0.0 for MPC57xx series with PowerPC_Z4 port (VLE support)",
+  "keywords": [
+    "framework",
+    "freertos",
+    "rtos",
+    "nxp",
+    "powerpc",
+    "mpc57xx",
+    "vle",
+    "e200z4"
+  ],
+  "homepage": "https://github.com/dapperfu/platform-nxppowerpc",
+  "license": "GPL-2.0 WITH FreeRTOS-exception",
+  "system": [
+    "linux_x86_64"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dapperfu/platform-nxppowerpc.git"
+  },
+  "urls": {
+    "linux_x86_64": "https://github.com/dapperfu/platform-nxppowerpc/releases/download/v.0.0.1/freertos-9.0.0_MPC57XXX_public_rel_1.zip"
+  },
+  "sha256": {
+    "linux_x86_64": "f13be3ac6fb5e21c31fc57aab3044690ba84ef4a5f964f5ca425ad306fdd6a56"
+  }
+}

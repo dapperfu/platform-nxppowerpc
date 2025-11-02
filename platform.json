@@ -44,6 +44,11 @@
       "type": "tool",
       "version": "1.7.2.201709281658"
     },
+    "framework-freertos-nxp-mpc57xx": {
+      "type": "framework",
+      "optional": true,
+      "version": "9.0.0.1"
+    },
     "framework-freertos": {
       "type": "framework",
       "optional": true,
