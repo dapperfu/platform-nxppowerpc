@@ -1,76 +1,49 @@
-# Rewritten for GCC 4.9.4 PowerPC VLE assembler compatibility
+;#**************************************************************************/
+;#* FILE NAME: intc_sw_handlers.s            COPYRIGHT (c) Freescale 2016  */
+;#*                                                All Rights Reserved     */
+;#* DESCRIPTION:                                                           */
+;#*        This file creates prolog, epilog for C ISR and enables nested   */
+;#*        interrupts.                                                     */
+;#* WARNING:  This stack frame does not save the SPEs Accumulator, which   */
+;#*           is required if SPE instructions are used in ISRs.   If SPE   */
+;#*           instructions are used, the stack frame must include the      */
+;#*           accumulator, and prologue and epilogue must be modified.     */
+;#=========================================================================*/
     .globl   IVOR4_Handler
-    
-    .equ  INTC_IACKR, 0xfc040020
-    .equ  INTC_EOIR,  0xfc040030
-    
+
+#ifdef __ghs__
+    .section    .vletext, axv
+    .vle
+#endif
+
+    .equ  INTC_IACKR, 0xfc040020  ;# Interrupt Acknowledge Register address
+    .equ  INTC_EOIR,  0xfc040030   ;# End Of Interrupt Register address
+
     .align 4
 
 IVOR4_Handler:
 prologue:
-    # Stack frame: calculate r1-0x50, store at that address
-    e_add16i    r1, r1, -0x50
-    # Store backchain - use absolute addressing via temp reg
-    # Actually, we need the old r1 value... use r0
-    e_add16i    r0, r1, 0x50          # r0 = old r1
-    se_stw      r0, 0(r1)             # Store backchain
-    
-    # Save SRR - calculate address in r0
-    e_add16i    r0, r1, 0x0c
-    e_stmvsrrw  0(r0)
-    
-    # Save r3 to stack at 0x08(r1) - calculate address
-    e_mr        r0, r3                 # Save r3 temporarily
-    e_add16i    r3, r1, 0x08
-    se_stw      r0, 0(r3)
-    e_mr        r3, r0                 # Restore r3
-    
-    # Load INTC_IACKR address (using explicit calculation)
-    e_lis       r3, 0xfc04
-    e_or2i      r3, r3, 0x0020
-    e_lwz       r3, 0(r3)              # Load IACKR value
-    
-    wrteei      1
-    se_lwz      r3, 0(r3)              # Load ISR address
-    
-    # Save SPRs - calculate address
-    e_add16i    r0, r1, 0x14
-    e_stmvsprw  0(r0)
-    
-    se_mtLR     r3
-    
-    # Save GPRs - calculate address
-    e_add16i    r0, r1, 0x24
-    e_stmvgprw  0(r0)
-    
-    se_blrl
+    e_stwu      r1,-0x50 (r1)           ;# Create stack frame and store back chain
+    e_stmvsrrw      0x0c (r1)           ;# Save SRR[0-1] (must be done before enabling MSR[EE])
+    se_stw      r3, 0x08 (r1)           ;# Save working register (r3)
+    e_lis       r3, INTC_IACKR@ha       ;# Save address  of INTC_IACKR in r3
+    e_lwz       r3, INTC_IACKR@l(r3)    ;# Save contents of INTC_IACKR in r3 (this is vector table address)
+    wrteei      1                       ;# Set MSR[EE] (must wait a couple clocks after reading IACKR)
+    se_lwz      r3, 0x0(r3)             ;# Read ISR address from Interrupt Vector Table using pointer
+    e_stmvsprw      0x14 (r1)           ;# Save CR, LR, CTR, XER
+    se_mtLR     r3                      ;# Copy ISR address (from IACKR) to LR for next branch
+    e_stmvgprw      0x24 (r1)           ;# Save GPRs, r[0,3-12]
+    se_blrl                             ;# Branch to ISR, with return to next instruction (epilogue)
 
 epilogue:
-    # Restore SPRs
-    e_add16i    r0, r1, 0x14
-    e_lmvsprw   0(r0)
-    
-    # Restore GPRs
-    e_add16i    r0, r1, 0x24
-    e_lmvgprw   0(r0)
-    
-    # Load INTC_EOIR and write
-    e_lis       r3, 0xfc04
-    e_or2i      r3, r3, 0x0030
-    
-    mbar
-    wrteei      0
-    se_stw      r3, 0(r3)              # Write r3 to INTC_EOIR
-    
-    # Restore r3
-    e_add16i    r0, r1, 0x08
-    se_lwz      r3, 0(r0)
-    
-    # Restore SRR
-    e_add16i    r0, r1, 0x0c
-    e_lmvsrrw   0(r0)
-    
-    # Reclaim stack
-    e_add16i    r1, r1, 0x50
-    
-    se_rfi
+    e_lmvsprw       0x14 (r1)           ;# Restore CR, LR, CTR, XER
+    e_lmvgprw       0x24 (r1)           ;# Restore GPRs, r[0,3-12]
+    e_lis       r3, INTC_EOIR@ha        ;# Load upper half of INTC_EOIR address to r3
+    mbar                                ;# Ensure prior clearing of interrupt flag conmpleted.
+    wrteei      0                       ;# Disable interrupts
+    e_stw       r3, INTC_EOIR@l(r3)     ;# Load lower half of INTC_EOIR address to r3 and
+                                        ;# write contents of r3 to INTC_EOIR
+    se_lwz      r3, 0x08 (r1)           ;# Restore working register (r3) (original value)
+    e_lmvsrrw       0x0c (r1)           ;# Restore SRR[0-1]
+    e_add16i    r1, r1, 0x50            ;# Reclaim stack space
+    se_rfi                              ;# End of Interrupt Handler - re-enables interrupts

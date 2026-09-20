@@ -80,6 +80,10 @@ def import_example(src_example, dst_example):
             safe = fname.replace(" ", "").replace("+", "_")
             if safe != fname:
                 os.rename(os.path.join(dst_part, fname), os.path.join(dst_part, safe))
+    common = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "examples", "_common", "intc_sw_handlers.S")
+    dest_handler = os.path.join(dst_example, "src", "intc_sw_handlers.S")
+    if os.path.isfile(common) and os.path.isfile(dest_handler):
+        shutil.copy2(common, dest_handler)
     with open(os.path.join(dst_example, "platformio.ini"), "w") as handle:
         handle.write(PLATFORMIO_INI)
 

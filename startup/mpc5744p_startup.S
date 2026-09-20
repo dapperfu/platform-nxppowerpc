@@ -301,8 +301,13 @@ bss_Init_end:
 		e_bl	main
 
 #ifdef __GNUC__   /* GCC */
-;# Empty _fini function
+;# Empty _fini function 
 		.globl	_fini
 _fini:
 		e_b .
+
+;# EABI main() prologue helper (SDA bases already set above)
+		.globl	__eabi
+__eabi:
+		se_blr
 #endif

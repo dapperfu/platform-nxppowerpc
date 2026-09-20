@@ -319,6 +319,21 @@ if not exists(SPECS_PATH):
 print("Using EWL sysroot: %s" % EWL_DIR)
 print("Using EWL specs: %s" % SPECS_PATH)
 
+
+def ewl_has_libc():
+    lib_root = join(EWL_DIR, "lib")
+    if not exists(lib_root):
+        return False
+    for root, _dirs, files in os.walk(lib_root):
+        if "libc99.a" in files:
+            return True
+    return False
+
+
+EWL_HAS_LIBS = ewl_has_libc()
+if not EWL_HAS_LIBS:
+    print("EWL libc archives not found; linking with -nostdlib (headers/specs still used to compile).")
+
 ASSEMBLER_BIN_DIR = find_assembler_bin_dir()
 B_DIRS = [ASSEMBLER_BIN_DIR] if ASSEMBLER_BIN_DIR else []
 if ASSEMBLER_BIN_DIR:
@@ -336,7 +351,7 @@ machine_flags = [
 ]
 
 common_c_flags = machine_flags + [
-    "-std=c99",
+    "-std=gnu99",
     "-fmessage-length=0",
     "-fsigned-char",
     "-ffunction-sections",
@@ -386,13 +401,31 @@ env.Append(
         join(EWL_DIR, "EWL_C", "include", "pa"),
     ],
     LINKFLAGS=machine_flags + [
-        specs_flag,
-        "--sysroot=%s" % EWL_DIR,
         "-fno-use-linker-plugin",
         "-Wl,--gc-sections",
         "-Wl,-Map,%s" % join("$BUILD_DIR", "${PROGNAME}.map"),
     ],
 )
+if EWL_HAS_LIBS:
+    env.Append(LINKFLAGS=[specs_flag, "--sysroot=%s" % EWL_DIR])
+else:
+    env.Append(LINKFLAGS=["-nostdlib", "-nostartfiles"])
+    newlib_lib = None
+    if TOOLCHAIN_DIR:
+        for variant in (
+            join(TOOLCHAIN_DIR, "powerpc-eabivle", "newlib", "lib", cpu, "fp"),
+            join(TOOLCHAIN_DIR, "powerpc-eabivle", "newlib", "lib", cpu),
+            join(TOOLCHAIN_DIR, "powerpc-eabivle", "lib", cpu),
+        ):
+            if exists(join(variant, "libc.a")):
+                newlib_lib = variant
+                break
+    if newlib_lib:
+        env.Append(LIBPATH=[newlib_lib], LIBS=["c", "m", "gcc"])
+        gcc_lib = join(TOOLCHAIN_DIR, "lib", "gcc", "powerpc-eabivle", "4.9.4", cpu)
+        if exists(join(gcc_lib, "libgcc.a")):
+            env.Append(LIBPATH=[gcc_lib])
+        print("Using newlib fallback: %s" % newlib_lib)
 for b_dir in B_DIRS:
     env.Append(LINKFLAGS=["-B%s" % b_dir])
 
