@@ -320,19 +320,35 @@ print("Using EWL sysroot: %s" % EWL_DIR)
 print("Using EWL specs: %s" % SPECS_PATH)
 
 
-def ewl_has_libc():
+def find_ewl_lib_dir():
+    """Directory that holds EWL libc99.a / libm.a / librt.a for this CPU."""
+    platform_dir = platform.get_dir()
+    candidates = [
+        join(EWL_DIR, "lib", cpu, "fp"),
+        join(EWL_DIR, "lib", cpu),
+        join(EWL_DIR, "lib"),
+        join(platform_dir, "lib", cpu, "fp"),
+        join(platform_dir, "lib", cpu),
+    ]
+    for candidate in candidates:
+        if exists(join(candidate, "libc99.a")):
+            return candidate
     lib_root = join(EWL_DIR, "lib")
-    if not exists(lib_root):
-        return False
-    for root, _dirs, files in os.walk(lib_root):
-        if "libc99.a" in files:
-            return True
-    return False
+    if exists(lib_root):
+        for root, _dirs, files in os.walk(lib_root):
+            if "libc99.a" in files:
+                return root
+    return None
 
 
-EWL_HAS_LIBS = ewl_has_libc()
-if not EWL_HAS_LIBS:
-    print("EWL libc archives not found; linking with -nostdlib (headers/specs still used to compile).")
+EWL_LIB_DIR = find_ewl_lib_dir()
+if EWL_LIB_DIR is None:
+    raise Exception(
+        "EWL C archives (libc99.a, libm.a, librt.a) not found under %s.\n"
+        "Point VLE_EWL_DIR at an S32DS e200_ewl2 tree, or build the e200z4 "
+        "EWL libraries with scripts/build_ewl_e200z4.sh." % EWL_DIR
+    )
+print("Using EWL libraries: %s" % EWL_LIB_DIR)
 
 ASSEMBLER_BIN_DIR = find_assembler_bin_dir()
 B_DIRS = [ASSEMBLER_BIN_DIR] if ASSEMBLER_BIN_DIR else []
@@ -401,31 +417,18 @@ env.Append(
         join(EWL_DIR, "EWL_C", "include", "pa"),
     ],
     LINKFLAGS=machine_flags + [
+        specs_flag,
+        "--sysroot=%s" % EWL_DIR,
         "-fno-use-linker-plugin",
         "-Wl,--gc-sections",
         "-Wl,-Map,%s" % join("$BUILD_DIR", "${PROGNAME}.map"),
     ],
+    LIBPATH=[EWL_LIB_DIR],
 )
-if EWL_HAS_LIBS:
-    env.Append(LINKFLAGS=[specs_flag, "--sysroot=%s" % EWL_DIR])
-else:
-    env.Append(LINKFLAGS=["-nostdlib", "-nostartfiles"])
-    newlib_lib = None
-    if TOOLCHAIN_DIR:
-        for variant in (
-            join(TOOLCHAIN_DIR, "powerpc-eabivle", "newlib", "lib", cpu, "fp"),
-            join(TOOLCHAIN_DIR, "powerpc-eabivle", "newlib", "lib", cpu),
-            join(TOOLCHAIN_DIR, "powerpc-eabivle", "lib", cpu),
-        ):
-            if exists(join(variant, "libc.a")):
-                newlib_lib = variant
-                break
-    if newlib_lib:
-        env.Append(LIBPATH=[newlib_lib], LIBS=["c", "m", "gcc"])
-        gcc_lib = join(TOOLCHAIN_DIR, "lib", "gcc", "powerpc-eabivle", "4.9.4", cpu)
-        if exists(join(gcc_lib, "libgcc.a")):
-            env.Append(LIBPATH=[gcc_lib])
-        print("Using newlib fallback: %s" % newlib_lib)
+if TOOLCHAIN_DIR:
+    gcc_lib = join(TOOLCHAIN_DIR, "lib", "gcc", "powerpc-eabivle", "4.9.4", cpu)
+    if exists(join(gcc_lib, "libgcc.a")):
+        env.Append(LIBPATH=[gcc_lib])
 for b_dir in B_DIRS:
     env.Append(LINKFLAGS=["-B%s" % b_dir])
 

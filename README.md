@@ -1,6 +1,6 @@
 # NXP PowerPC VLE: PlatformIO platform for DEVKIT-MPC5744P
 
-Development platform for the **NXP DEVKIT-MPC5744P** board (MPC5744P / e200z4) using PlatformIO and the PowerPC EABI VLE toolchain.
+Development platform for the **NXP DEVKIT-MPC5744P** board (MPC5744P / e200z4) using PlatformIO and the PowerPC EABI VLE toolchain. Firmware is compiled and linked against **EWL** (`ewl_c9x_noio.specs`: `-lc99 -lm -lrt`), not newlib `-lc`.
 
 This milestone supports **one board** and **one CPU**. `pio run` produces flash images (ELF, HEX, BIN, S19). Upload via OpenSDA is not implemented yet.
 

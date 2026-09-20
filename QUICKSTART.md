@@ -4,6 +4,8 @@
 
 - Toolchain package: `toolchain-powerpc-eabivle` (GCC 4.9.4 EABI VLE)
 - EWL: set `VLE_EWL_DIR` or place `e200_ewl2` next to the toolchain / in `$HOME/e200_ewl2`
+- Link uses EWL `ewl_c9x_noio.specs` (`-lc99 -lm -lrt -lgcc`), not newlib `-lc`
+- If the tree has headers/specs but no archives, build them: `./scripts/build_ewl_e200z4.sh`
 
 If `libexec/.../cc1` is not executable after unzip, `chmod +x` that file.
 
