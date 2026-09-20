@@ -3,18 +3,19 @@
 # for MPC5744P (e200z4 hard-float VLE): libc99.a, libm.a, librt.a.
 set -euo pipefail
 
-EWL_DIR="${1:-${VLE_EWL_DIR:-/projects/mpc5744p/S32DS/build_tools/e200_ewl2}}"
+PKG="${HOME}/.platformio/packages/toolchain-powerpc-eabivle"
+EWL_DIR="${1:-${PKG}/e200_ewl2}"
 if [[ ! -d "${EWL_DIR}/EWL_C" ]]; then
     echo "EWL source not found at ${EWL_DIR}." >&2
-    echo "Pass the e200_ewl2 path or set board_build.ewl_dir to that folder." >&2
+    echo "Pass the e200_ewl2 directory from the toolchain tarball." >&2
     exit 1
 fi
 
 TOOLS="${POWERPC_TOOLS:-}"
 if [[ -z "${TOOLS}" ]]; then
     for cand in \
-        "${HOME}/.platformio/packages/toolchain-powerpc-eabivle/powerpc-eabivle-4_9" \
-        /projects/mpc5744p/S32DS/build_tools/powerpc-eabivle-4_9; do
+        "${PKG}/powerpc-eabivle-4_9" \
+        "${PKG}"; do
         if [[ -x "${cand}/bin/powerpc-eabivle-gcc" ]]; then
             TOOLS="${cand}"
             break

@@ -51,13 +51,9 @@ if os.environ.get("POWERPC_TOOLCHAIN_PATH"):
 # Add standard system paths (relative to common install locations)
 # These are standard locations where toolchains are typically installed
 standard_paths = [
-    # S32DS installation locations (relative to common install paths)
-    os.path.join(os.path.expanduser("~"), "S32DS", "build_tools", "powerpc-eabivle-4_9", "powerpc-eabivle", "bin"),
-    os.path.join("S32DS", "build_tools", "powerpc-eabivle-4_9", "powerpc-eabivle", "bin"),
-    # Standard Unix installation paths
     os.path.join(os.path.expanduser("~"), "powerpc-eabivle", "bin"),
-    "/opt/powerpc-eabivle/bin",  # Standard /opt location
-    "/usr/local/powerpc-eabivle/bin",  # Standard /usr/local location
+    "/opt/powerpc-eabivle/bin",
+    "/usr/local/powerpc-eabivle/bin",
 ]
 
 SYSTEM_TOOLCHAIN_PATHS.extend(standard_paths)
@@ -260,23 +256,58 @@ def _is_ewl_dir(path):
     return exists(join(path, "EWL_C", "include")) or exists(join(path, "lib"))
 
 
+def toolchain_package_root():
+    """Root of the downloaded toolchain tarball/zip after PlatformIO extracts it."""
+    try:
+        pkg = platform.get_package_dir("toolchain-powerpc-eabivle")
+        if pkg:
+            return pkg
+    except Exception:
+        pass
+    if TOOLCHAIN_DIR:
+        name = os.path.basename(TOOLCHAIN_DIR)
+        if name.startswith("powerpc-eabivle"):
+            return os.path.dirname(TOOLCHAIN_DIR)
+        return TOOLCHAIN_DIR
+    return None
+
+
 def find_ewl_dir():
-    """EWL tree from platformio.ini: board_build.ewl_dir."""
+    """EWL lives inside the toolchain package (e200_ewl2 next to powerpc-eabivle-4_9).
+
+    Override with board_build.ewl_dir in platformio.ini if needed. Never use a
+    host S32DS install; an expanded tarball on disk is reference only.
+    """
+    candidates = []
     try:
         raw = board.get("build.ewl_dir")
     except (KeyError, AttributeError):
         raw = None
-    if not raw:
-        raise Exception(
-            "Set board_build.ewl_dir in platformio.ini to the e200_ewl2 folder."
-        )
-    resolved = os.path.realpath(env.subst(str(raw)))
-    if not _is_ewl_dir(resolved):
-        raise Exception(
-            "board_build.ewl_dir=%s is not an e200_ewl2 tree "
-            "(need EWL_C/include or lib/)." % resolved
-        )
-    return resolved
+    if raw:
+        candidates.append(os.path.realpath(env.subst(str(raw))))
+
+    pkg_root = toolchain_package_root()
+    if pkg_root:
+        candidates.append(join(pkg_root, "e200_ewl2"))
+        candidates.append(join(pkg_root, "powerpc-eabivle-4_9", "e200_ewl2"))
+    if TOOLCHAIN_DIR:
+        candidates.append(join(TOOLCHAIN_DIR, "e200_ewl2"))
+
+    seen = set()
+    for candidate in candidates:
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        if _is_ewl_dir(candidate):
+            return candidate
+
+    raise Exception(
+        "e200_ewl2 was not found inside the toolchain package. "
+        "It must ship in the downloaded tarball as e200_ewl2/ next to "
+        "powerpc-eabivle-4_9/. Override with board_build.ewl_dir only if "
+        "you extracted that same package tree elsewhere. Tried: %s" %
+        (", ".join(candidates) if candidates else "(no toolchain package)")
+    )
 
 
 def find_assembler_bin_dir():
@@ -307,13 +338,10 @@ print("Using EWL specs: %s" % SPECS_PATH)
 
 def find_ewl_lib_dir():
     """Directory that holds EWL libc99.a / libm.a / librt.a for this CPU."""
-    platform_dir = platform.get_dir()
     candidates = [
         join(EWL_DIR, "lib", cpu, "fp"),
         join(EWL_DIR, "lib", cpu),
         join(EWL_DIR, "lib"),
-        join(platform_dir, "lib", cpu, "fp"),
-        join(platform_dir, "lib", cpu),
     ]
     for candidate in candidates:
         if exists(join(candidate, "libc99.a")):
@@ -329,9 +357,8 @@ def find_ewl_lib_dir():
 EWL_LIB_DIR = find_ewl_lib_dir()
 if EWL_LIB_DIR is None:
     raise Exception(
-        "EWL C archives (libc99.a, libm.a, librt.a) not found under %s.\n"
-        "board_build.ewl_dir must point at an e200_ewl2 tree that already "
-        "contains those libraries (S32DS or scripts/build_ewl_e200z4.sh)." % EWL_DIR
+        "EWL C archives (libc99.a, libm.a, librt.a) not found under %s. "
+        "The toolchain tarball's e200_ewl2/lib tree must include them." % EWL_DIR
     )
 print("Using EWL libraries: %s" % EWL_LIB_DIR)
 

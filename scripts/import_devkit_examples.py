@@ -43,7 +43,8 @@ PLATFORMIO_INI = """\
 platform = symlink://../..
 board = devkit-mpc5744p
 framework = baremetal
-board_build.ewl_dir = /projects/mpc5744p/S32DS/build_tools/e200_ewl2
+; EWL is inside the downloaded toolchain package (e200_ewl2 next to gcc).
+board_build.ewl_dir = ${platformio.packages_dir}/toolchain-powerpc-eabivle/e200_ewl2
 """
 
 

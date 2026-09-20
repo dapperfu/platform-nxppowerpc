@@ -9,8 +9,7 @@ FAILED=0
 COUNT=0
 OBJDUMP=""
 for cand in \
-    "${HOME}/.platformio/packages/toolchain-powerpc-eabivle/powerpc-eabivle-4_9/bin/powerpc-eabivle-objdump" \
-    /projects/mpc5744p/S32DS/build_tools/powerpc-eabivle-4_9/bin/powerpc-eabivle-objdump; do
+    "${HOME}/.platformio/packages/toolchain-powerpc-eabivle/powerpc-eabivle-4_9/bin/powerpc-eabivle-objdump"; do
     if [[ -x "${cand}" ]]; then
         OBJDUMP="${cand}"
         break
