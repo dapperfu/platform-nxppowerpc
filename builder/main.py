@@ -288,18 +288,21 @@ def find_ewl_dir():
 
     pkg_root = toolchain_package_root()
     if pkg_root:
-        candidates.append(join(pkg_root, "e200_ewl2"))
-        candidates.append(join(pkg_root, "powerpc-eabivle-4_9", "e200_ewl2"))
+        candidates.append(os.path.realpath(join(pkg_root, "e200_ewl2")))
+        candidates.append(os.path.realpath(join(pkg_root, "powerpc-eabivle-4_9", "e200_ewl2")))
     if TOOLCHAIN_DIR:
-        candidates.append(join(TOOLCHAIN_DIR, "e200_ewl2"))
+        candidates.append(os.path.realpath(join(TOOLCHAIN_DIR, "e200_ewl2")))
 
     seen = set()
+    unique = []
     for candidate in candidates:
         if not candidate or candidate in seen:
             continue
         seen.add(candidate)
+        unique.append(candidate)
         if _is_ewl_dir(candidate):
             return candidate
+    candidates = unique
 
     raise Exception(
         "e200_ewl2 was not found inside the toolchain package. "
