@@ -1,38 +1,25 @@
-# Quick Start: Using Local Toolchain Zip
+# Quick start: DEVKIT-MPC5744P
 
-If you have a toolchain zip file and want PlatformIO to use it instead of downloading from the internet:
+## 1. Toolchain and EWL
 
-## Quick Setup (3 steps)
+- Toolchain package: `toolchain-powerpc-eabivle` (GCC 4.9.4 EABI VLE)
+- EWL: set `VLE_EWL_DIR` or place `e200_ewl2` next to the toolchain / in `$HOME/e200_ewl2`
 
-### 1. Place your zip file here:
+If `libexec/.../cc1` is not executable after unzip, `chmod +x` that file.
+
+## 2. Build Hello_World
+
 ```bash
-mkdir -p platform-nxppowerpc/tools/toolchain-powerpc-eabivle/toolchain
-# Copy your zip file to:
-# /projects/platformio/platform-nxppowerpc/tools/toolchain-powerpc-eabivle/toolchain/gcc-4.9.4-Ee200-eabivle-x86_64-linux-g2724867.zip
+cd examples/Hello_World
+pio run
 ```
 
-Or place it anywhere in `/projects/platformio/` - the script will find it.
+## 3. Build every 1:1 example
 
-### 2. Run the configuration script:
 ```bash
-cd platform-nxppowerpc/tools/toolchain-powerpc-eabivle
-python3 configure-local-toolchain.py
+./scripts/build_all_examples.sh
 ```
 
-### 3. Reinstall the toolchain package:
-```bash
-cd platform-nxppowerpc-examples/mpc5744p/memory/edma-mpc5744p
-pio pkg uninstall toolchain-powerpc-eabivle
-pio pkg install toolchain-powerpc-eabivle
-```
+## 4. Flash
 
-That's it! Now `pio run` will use your local toolchain zip file.
-
-## Alternative: System Toolchain
-
-If you prefer to use a system-installed toolchain, you can place the extracted toolchain in:
-- `/opt/powerpc-eabivle/bin/`
-- `/usr/local/powerpc-eabivle/bin/`
-
-The platform builder will automatically detect it.
-
+Not wired yet.

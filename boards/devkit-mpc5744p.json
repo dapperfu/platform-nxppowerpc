@@ -1,0 +1,23 @@
+{
+  "build": {
+    "cpu": "e200z4",
+    "f_cpu": "160000000L",
+    "mcu": "mpc5744p",
+    "extra_flags": "-DMPC5744P -DDEVKIT_MPC5744P",
+    "linker_type": "flash",
+    "linker_script": "mpc5744p_flash.ld"
+  },
+  "debug": {
+    "tools": {}
+  },
+  "frameworks": [
+    "baremetal"
+  ],
+  "name": "DEVKIT-MPC5744P",
+  "upload": {
+    "maximum_ram_size": 384000,
+    "maximum_size": 2097152
+  },
+  "url": "https://www.nxp.com/design/design-center/development-boards-and-designs/DEVKIT-MPC5744P",
+  "vendor": "NXP"
+}

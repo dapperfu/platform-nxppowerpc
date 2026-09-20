@@ -106,7 +106,7 @@ if startup_code:
     env.BuildSources(
         join("$BUILD_DIR", "PlatformStartup"),
         join(platform.get_dir(), "startup"),
-        src_filter=[f"+<{os.path.basename(startup_code)}>", "-<*>"]
+        src_filter=["-<*>", "+<%s>" % os.path.basename(startup_code)]
     )
     print("Baremetal framework initialized for NXP PowerPC VLE")
     print(f"  - Using platform startup template: {os.path.basename(startup_code)}")
