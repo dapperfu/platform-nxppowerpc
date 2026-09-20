@@ -40,10 +40,12 @@ make -C "${EWL_DIR}/EWL_C" -f EWL_C.GCC.mak \
     POWERPC_TOOLS="${TOOLS}" \
     TARGET=e200z4/fp/libm
 
+# EWL_Runtime prefixes LIBOUT ("../lib") onto TARGET with no extra slash,
+# so TARGET must start with /e200z4/... to land in lib/e200z4/fp/librt.a
 make -C "${EWL_DIR}/EWL_Runtime" -f EWL_Runtime.GCC.mak \
     PLATFORM=PA \
     POWERPC_TOOLS="${TOOLS}" \
-    TARGET=e200z4/fp/librt
+    TARGET=/e200z4/fp/librt
 
 DEST="${EWL_DIR}/lib/e200z4/fp"
 for lib in libc99.a libm.a librt.a; do
