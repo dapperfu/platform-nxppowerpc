@@ -43,6 +43,7 @@ PLATFORMIO_INI = """\
 platform = symlink://../..
 board = devkit-mpc5744p
 framework = baremetal
+board_build.ewl_dir = /projects/mpc5744p/S32DS/build_tools/e200_ewl2
 """
 
 

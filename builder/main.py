@@ -261,32 +261,22 @@ def _is_ewl_dir(path):
 
 
 def find_ewl_dir():
-    """Locate e200_ewl2 the same way DEVKIT-Makefile does."""
-    candidates = []
-    if os.environ.get("VLE_EWL_DIR"):
-        candidates.append(os.environ["VLE_EWL_DIR"])
-
-    if TOOLCHAIN_DIR:
-        candidates.append(join(TOOLCHAIN_DIR, "e200_ewl2"))
-        candidates.append(join(TOOLCHAIN_DIR, "..", "e200_ewl2"))
-        candidates.append(join(TOOLCHAIN_DIR, "..", "..", "e200_ewl2"))
-
-    platform_dir = platform.get_dir()
-    candidates.extend([
-        join(platform_dir, "..", "DEVKIT-Makefile", "e200_ewl2"),
-        join(platform_dir, "..", "S32DS", "build_tools", "e200_ewl2"),
-        join(os.path.expanduser("~"), "e200_ewl2"),
-        "/tmp/deps/e200_ewl2",
-        "/usr/local/s32ds-power-linux/e200_ewl2",
-        "/usr/local/e200_ewl2",
-        join(os.path.expanduser("~"), "S32DS", "build_tools", "e200_ewl2"),
-    ])
-
-    for candidate in candidates:
-        resolved = os.path.realpath(candidate)
-        if _is_ewl_dir(resolved):
-            return resolved
-    return None
+    """EWL tree from platformio.ini: board_build.ewl_dir."""
+    try:
+        raw = board.get("build.ewl_dir")
+    except (KeyError, AttributeError):
+        raw = None
+    if not raw:
+        raise Exception(
+            "Set board_build.ewl_dir in platformio.ini to the e200_ewl2 folder."
+        )
+    resolved = os.path.realpath(env.subst(str(raw)))
+    if not _is_ewl_dir(resolved):
+        raise Exception(
+            "board_build.ewl_dir=%s is not an e200_ewl2 tree "
+            "(need EWL_C/include or lib/)." % resolved
+        )
+    return resolved
 
 
 def find_assembler_bin_dir():
@@ -302,11 +292,6 @@ def find_assembler_bin_dir():
 
 
 EWL_DIR = find_ewl_dir()
-if EWL_DIR is None:
-    raise Exception(
-        "e200_ewl2 (VLE Embedded Wrapper Library) not found.\n"
-        "Set VLE_EWL_DIR to the e200_ewl2 directory."
-    )
 
 SPECS_PATH = SPECS
 if not exists(SPECS_PATH):
@@ -345,8 +330,8 @@ EWL_LIB_DIR = find_ewl_lib_dir()
 if EWL_LIB_DIR is None:
     raise Exception(
         "EWL C archives (libc99.a, libm.a, librt.a) not found under %s.\n"
-        "Point VLE_EWL_DIR at an S32DS e200_ewl2 tree, or build the e200z4 "
-        "EWL libraries with scripts/build_ewl_e200z4.sh." % EWL_DIR
+        "board_build.ewl_dir must point at an e200_ewl2 tree that already "
+        "contains those libraries (S32DS or scripts/build_ewl_e200z4.sh)." % EWL_DIR
     )
 print("Using EWL libraries: %s" % EWL_LIB_DIR)
 

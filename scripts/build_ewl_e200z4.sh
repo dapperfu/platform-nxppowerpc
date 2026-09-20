@@ -3,9 +3,10 @@
 # for MPC5744P (e200z4 hard-float VLE): libc99.a, libm.a, librt.a.
 set -euo pipefail
 
-EWL_DIR="${VLE_EWL_DIR:-${HOME}/e200_ewl2}"
+EWL_DIR="${1:-${VLE_EWL_DIR:-/projects/mpc5744p/S32DS/build_tools/e200_ewl2}}"
 if [[ ! -d "${EWL_DIR}/EWL_C" ]]; then
-    echo "EWL source not found at ${EWL_DIR}. Set VLE_EWL_DIR." >&2
+    echo "EWL source not found at ${EWL_DIR}." >&2
+    echo "Pass the e200_ewl2 path or set board_build.ewl_dir to that folder." >&2
     exit 1
 fi
 

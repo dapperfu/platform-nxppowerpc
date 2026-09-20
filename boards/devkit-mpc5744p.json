@@ -5,7 +5,8 @@
     "mcu": "mpc5744p",
     "extra_flags": "-DMPC5744P -DDEVKIT_MPC5744P",
     "linker_type": "flash",
-    "linker_script": "mpc5744p_flash.ld"
+    "linker_script": "mpc5744p_flash.ld",
+    "ewl_dir": "/projects/mpc5744p/S32DS/build_tools/e200_ewl2"
   },
   "debug": {
     "tools": {}

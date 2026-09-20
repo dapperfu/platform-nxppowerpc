@@ -3,7 +3,6 @@
 set -euo pipefail
 
 export PATH="${HOME}/.local/bin:${PATH}"
-export VLE_EWL_DIR="${VLE_EWL_DIR:-${HOME}/e200_ewl2}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FAILED=0
