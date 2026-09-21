@@ -40,7 +40,7 @@ EXAMPLES = [
 
 PLATFORMIO_INI = """\
 [env:devkit-mpc5744p]
-platform = symlink://../..
+platform = nxppowerpc
 board = devkit-mpc5744p
 framework = baremetal
 ; EWL is inside the downloaded toolchain package (e200_ewl2 next to gcc).
