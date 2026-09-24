@@ -51,13 +51,9 @@ if os.environ.get("POWERPC_TOOLCHAIN_PATH"):
 # Add standard system paths (relative to common install locations)
 # These are standard locations where toolchains are typically installed
 standard_paths = [
-    # S32DS installation locations (relative to common install paths)
-    os.path.join(os.path.expanduser("~"), "S32DS", "build_tools", "powerpc-eabivle-4_9", "powerpc-eabivle", "bin"),
-    os.path.join("S32DS", "build_tools", "powerpc-eabivle-4_9", "powerpc-eabivle", "bin"),
-    # Standard Unix installation paths
     os.path.join(os.path.expanduser("~"), "powerpc-eabivle", "bin"),
-    "/opt/powerpc-eabivle/bin",  # Standard /opt location
-    "/usr/local/powerpc-eabivle/bin",  # Standard /usr/local location
+    "/opt/powerpc-eabivle/bin",
+    "/usr/local/powerpc-eabivle/bin",
 ]
 
 SYSTEM_TOOLCHAIN_PATHS.extend(standard_paths)
@@ -249,19 +245,164 @@ if TOOLCHAIN_DIR is None:
 
 # Get board configuration
 board = env.BoardConfig()
+cpu = board.get("build.cpu", "e200z4")
+linker_type = board.get("build.linker_type", "flash")
+SPECS = os.environ.get("SPECS", "ewl_c9x_noio.specs")
 
-# PowerPC VLE machine flags
+
+def _is_ewl_dir(path):
+    if not path:
+        return False
+    return exists(join(path, "EWL_C", "include")) or exists(join(path, "lib"))
+
+
+def toolchain_package_root():
+    """Root of the downloaded toolchain tarball/zip after PlatformIO extracts it."""
+    try:
+        pkg = platform.get_package_dir("toolchain-powerpc-eabivle")
+        if pkg:
+            return pkg
+    except Exception:
+        pass
+    if TOOLCHAIN_DIR:
+        name = os.path.basename(TOOLCHAIN_DIR)
+        if name.startswith("powerpc-eabivle"):
+            return os.path.dirname(TOOLCHAIN_DIR)
+        return TOOLCHAIN_DIR
+    return None
+
+
+def find_ewl_dir():
+    """EWL lives inside the toolchain package (e200_ewl2 next to powerpc-eabivle-4_9).
+
+    Override with board_build.ewl_dir in platformio.ini if needed. Never use a
+    host S32DS install; an expanded tarball on disk is reference only.
+    """
+    candidates = []
+    try:
+        raw = board.get("build.ewl_dir")
+    except (KeyError, AttributeError):
+        raw = None
+    if raw:
+        candidates.append(os.path.realpath(env.subst(str(raw))))
+
+    pkg_root = toolchain_package_root()
+    if pkg_root:
+        candidates.append(os.path.realpath(join(pkg_root, "e200_ewl2")))
+        candidates.append(os.path.realpath(join(pkg_root, "powerpc-eabivle-4_9", "e200_ewl2")))
+    if TOOLCHAIN_DIR:
+        candidates.append(os.path.realpath(join(TOOLCHAIN_DIR, "e200_ewl2")))
+
+    seen = set()
+    unique = []
+    for candidate in candidates:
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        unique.append(candidate)
+        if _is_ewl_dir(candidate):
+            return candidate
+    candidates = unique
+
+    raise Exception(
+        "e200_ewl2 was not found inside the toolchain package. "
+        "It must ship in the downloaded tarball as e200_ewl2/ next to "
+        "powerpc-eabivle-4_9/. Override with board_build.ewl_dir only if "
+        "you extracted that same package tree elsewhere. Tried: %s" %
+        (", ".join(candidates) if candidates else "(no toolchain package)")
+    )
+
+
+def find_assembler_bin_dir():
+    if not TOOLCHAIN_DIR:
+        return None
+    nested = join(TOOLCHAIN_DIR, "powerpc-eabivle", "bin")
+    if exists(nested):
+        return nested
+    sibling = join(TOOLCHAIN_DIR, "bin")
+    if exists(sibling):
+        return sibling
+    return None
+
+
+EWL_DIR = find_ewl_dir()
+
+SPECS_PATH = SPECS
+if not exists(SPECS_PATH):
+    for spec_candidate in (join(EWL_DIR, "lib", SPECS), join(EWL_DIR, SPECS)):
+        if exists(spec_candidate):
+            SPECS_PATH = spec_candidate
+            break
+if not exists(SPECS_PATH):
+    raise Exception("EWL specs file %s not found under %s" % (SPECS, EWL_DIR))
+print("Using EWL sysroot: %s" % EWL_DIR)
+print("Using EWL specs: %s" % SPECS_PATH)
+
+
+def find_ewl_lib_dir():
+    """Directory that holds EWL libc99.a / libm.a / librt.a for this CPU."""
+    candidates = [
+        join(EWL_DIR, "lib", cpu, "fp"),
+        join(EWL_DIR, "lib", cpu),
+        join(EWL_DIR, "lib"),
+    ]
+    for candidate in candidates:
+        if exists(join(candidate, "libc99.a")):
+            return candidate
+    lib_root = join(EWL_DIR, "lib")
+    if exists(lib_root):
+        for root, _dirs, files in os.walk(lib_root):
+            if "libc99.a" in files:
+                return root
+    return None
+
+
+EWL_LIB_DIR = find_ewl_lib_dir()
+if EWL_LIB_DIR is None:
+    raise Exception(
+        "EWL C archives (libc99.a, libm.a, librt.a) not found under %s. "
+        "The toolchain tarball's e200_ewl2/lib tree must include them." % EWL_DIR
+    )
+print("Using EWL libraries: %s" % EWL_LIB_DIR)
+
+ASSEMBLER_BIN_DIR = find_assembler_bin_dir()
+B_DIRS = [ASSEMBLER_BIN_DIR] if ASSEMBLER_BIN_DIR else []
+if ASSEMBLER_BIN_DIR:
+    env.PrependENVPath("PATH", ASSEMBLER_BIN_DIR)
+if TOOLCHAIN_DIR:
+    env.PrependENVPath("PATH", join(TOOLCHAIN_DIR, "bin"))
+
+# DEVKIT-Makefile MACH_OPTS
 machine_flags = [
-    "-meabi",
+    "-mcpu=%s" % cpu,
+    "-mbig",
+    "-mvle",
+    "-mregnames",
     "-mhard-float",
-    "-mspe",
-    f"-mcpu={board.get('build.cpu', 'e200z4')}"
 ]
 
-# Configure toolchain
-# PlatformIO will find tools in the toolchain package's bin directory
+common_c_flags = machine_flags + [
+    "-std=gnu99",
+    "-fmessage-length=0",
+    "-fsigned-char",
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-Wall",
+    "-g3",
+    "--sysroot=%s" % EWL_DIR,
+]
+for b_dir in B_DIRS:
+    common_c_flags.append("-B%s" % b_dir)
+specs_flag = "-specs=%s" % SPECS_PATH
+
+cppdefines = [
+    "MPC574xP",
+    ("F_CPU", board.get("build.f_cpu", "160000000L")),
+]
+if linker_type != "ram":
+    cppdefines.append("START_FROM_FLASH")
+
 env.Replace(
-    # Tool names - PlatformIO will locate them in the toolchain package
     AR=TOOLCHAIN_PREFIX + "ar",
     AS=TOOLCHAIN_PREFIX + "as",
     CC=TOOLCHAIN_PREFIX + "gcc",
@@ -271,243 +412,147 @@ env.Replace(
     RANLIB=TOOLCHAIN_PREFIX + "ranlib",
     SIZETOOL=TOOLCHAIN_PREFIX + "size",
     LINK="$CC",
-    
     ARFLAGS=["rc"],
-    
     PIODEBUGFLAGS=["-O0", "-g3", "-ggdb", "-gdwarf-2"],
-    
-    SIZEPROGREGEXP=r"^(?:\.text|\.data|\.rodata|\.vectors)\s+([0-9]+).*",
-    SIZEDATAREGEXP=r"^(?:\.data|\.bss|\.noinit)\s+(\d+).*",
+    SIZEPROGREGEXP=r"^(?:\.text|\.data|\.rodata|\.vectors|\.startup|\.rchw)\s+([0-9]+).*",
+    SIZEDATAREGEXP=r"^(?:\.data|\.bss|\.noinit|\.sdata|\.sbss)\s+(\d+).*",
     SIZECHECKCMD="$SIZETOOL -A -d $SOURCES",
-    SIZEPRINTCMD='$SIZETOOL -B -d $SOURCES',
-    
-    PROGSUFFIX=".elf"
+    SIZEPRINTCMD="$SIZETOOL -B -d $SOURCES",
+    PROGSUFFIX=".elf",
 )
 
-# Configure build flags
-# Note: Assembly files (.S) will be preprocessed, (.s) will not
-# For .S files, compile through GCC (not direct assembler) to handle @ha/@l relocations
 env.Append(
-    ASFLAGS=machine_flags + [
-        "-Wa,-mvle",  # Enable VLE mode for assembler
-        "-Wa,-mrelocatable",  # Enable relocatable code generation for @ha/@l relocations
+    ASFLAGS=common_c_flags,
+    ASPPFLAGS=common_c_flags + ["-x", "assembler-with-cpp"],
+    CCFLAGS=common_c_flags + [specs_flag],
+    CXXFLAGS=["-fno-exceptions", "-fno-rtti", "-fno-threadsafe-statics"],
+    CPPDEFINES=cppdefines,
+    CPPPATH=[
+        join(EWL_DIR, "EWL_C", "include"),
+        join(EWL_DIR, "EWL_C", "include", "pa"),
     ],
-    # Preprocessed assembly (.S files) - compile through GCC to handle PowerPC relocations
-    # Note: Assembly files may need .vle directive or proper VLE section directives
-    # The errors suggest assembler confusion with register indirect addressing
-    ASPPFLAGS=machine_flags + [
-        "-x", "assembler-with-cpp",
-        "-Wa,-mvle",  # Enable VLE mode for assembler
-        "-Wa,-memb",  # Enable embedded ABI mode (may help with VLE instructions)
-        # Note: Some assembly files may need manual fixes for register syntax
-        # The linker will handle relocations during final link
-    ],
-    # Override for .s files (non-preprocessed) - use direct assembler with VLE
-    SFLAGS=machine_flags + [
-        "-Wa,-mvle",
-        "-Wa,-mrelocatable",
-    ],
-    
-    CCFLAGS=machine_flags + [
-        "-Os",
-        "-ffunction-sections",
-        "-fdata-sections",
-        "-Wall",
-        "-Wextra"
-    ],
-    
-    CXXFLAGS=[
-        "-fno-exceptions",
-        "-fno-rtti",
-        "-fno-threadsafe-statics"
-    ],
-    
-    CPPDEFINES=[
-        ("F_CPU", board.get("build.f_cpu", "120000000L"))
-    ],
-    
     LINKFLAGS=machine_flags + [
-        "-Os",
-        "-Wl,-gc-sections",
+        specs_flag,
+        "--sysroot=%s" % EWL_DIR,
+        "-fno-use-linker-plugin",
+        "-Wl,--gc-sections",
+        "-Wl,-Map,%s" % join("$BUILD_DIR", "${PROGNAME}.map"),
     ],
+    LIBPATH=[EWL_LIB_DIR],
 )
-
-# Find toolchain library path and add to LIBPATH
 if TOOLCHAIN_DIR:
-    cpu_variant = board.get('build.cpu', 'e200z4')
-    # Try multiple possible library base paths
-    # Libraries might be at package root or in subdirectory
-    toolchain_package_root = TOOLCHAIN_DIR
-    # If TOOLCHAIN_DIR is a subdirectory (e.g., powerpc-eabivle-4_9), go up to package root
-    if os.path.basename(TOOLCHAIN_DIR).startswith("powerpc-eabivle"):
-        toolchain_package_root = join(TOOLCHAIN_DIR, "..")
-    
-    # Try library paths at package root level
-    toolchain_lib_base_1 = join(toolchain_package_root, "e200_ewl2", "lib")
-    # Also try within the subdirectory if TOOLCHAIN_DIR is a subdirectory
-    toolchain_lib_base_2 = join(TOOLCHAIN_DIR, "e200_ewl2", "lib") if TOOLCHAIN_DIR != toolchain_package_root else None
-    
-    # Try to find library path for this CPU variant
-    potential_lib_paths = []
-    for lib_base in [toolchain_lib_base_1, toolchain_lib_base_2]:
-        if lib_base:
-            potential_lib_paths.extend([
-                join(lib_base, cpu_variant),
-                join(lib_base, cpu_variant, "spe"),
-                join(lib_base, "e200z6"),  # Fallback
-            ])
-    
-    for lib_path in potential_lib_paths:
-        expanded_lib_path = env.subst(lib_path)
-        if exists(expanded_lib_path):
-            env.Append(LIBPATH=[lib_path])
-            env.Append(LIBS=["m", "c"])
-            break
+    gcc_lib = join(TOOLCHAIN_DIR, "lib", "gcc", "powerpc-eabivle", "4.9.4", cpu)
+    if exists(join(gcc_lib, "libgcc.a")):
+        env.Append(LIBPATH=[gcc_lib])
+for b_dir in B_DIRS:
+    env.Append(LINKFLAGS=["-B%s" % b_dir])
 
-# Allow user to override via pre:script
 if env.get("PROGNAME", "program") == "program":
     env.Replace(PROGNAME="firmware")
 
-# Auto-detect and configure linker script
-# Priority:
-# 1. User-specified linker script in build_flags (-T path/to/linker.ld)
-# 2. Board-specific linker script from board.json (board.build.linker_script)
-# 3. Project-level linker.ld in PROJECT_DIR
-# 4. Board-specific default linker script from platform/linker/
-# 5. No linker script (user must provide)
 
-def find_linker_script():
-    """Find appropriate linker script with fallback hierarchy."""
-    board_mcu = board.get("build.mcu", "").lower()
-    
-    # Check if user already specified a linker script in build_flags
-    # Look in both BUILD_FLAGS and LINKFLAGS
-    for flag_list_name in ["BUILD_FLAGS", "LINKFLAGS"]:
-        flags = env.get(flag_list_name, [])
-        for flag in flags:
-            flag_str = str(flag) if not isinstance(flag, str) else flag
-            if "-T" in flag_str:
-                # User has specified linker script
-                return None
-    
-    # Check board configuration for linker script
-    # Handle missing option gracefully (some boards don't have this field)
+def user_specified_linker_script():
+    for flag_list_name in ("BUILD_FLAGS", "LINKFLAGS"):
+        for flag in env.get(flag_list_name, []):
+            if "-T" in str(flag):
+                return True
+    return False
+
+
+def resolve_platform_linker(name):
+    if not name:
+        return None
+    if exists(env.subst(name)):
+        return env.subst(name)
+    platform_linker = join(platform.get_dir(), "linker", name)
+    if exists(platform_linker):
+        return platform_linker
+    return None
+
+
+def find_memory_linker_script():
     try:
         board_linker = board.get("build.linker_script")
     except (KeyError, AttributeError):
         board_linker = None
-    
-    if board_linker:
-        # Can be relative to platform or absolute
-        if exists(env.subst(board_linker)):
-            return board_linker
-        # Try relative to platform
-        platform_linker = join(platform.get_dir(), "linker", board_linker)
-        if exists(env.subst(platform_linker)):
-            return platform_linker
-    
-    # Check for project-level linker.ld
-    project_linker = join("$PROJECT_DIR", "linker.ld")
-    if exists(env.subst(project_linker)):
+    found = resolve_platform_linker(board_linker)
+    if found:
+        return found
+    project_linker = env.subst(join("$PROJECT_DIR", "linker.ld"))
+    if exists(project_linker):
         return project_linker
-    
-    # Check for board-specific linker script in platform
-    platform_dir = platform.get_dir()
-    
-    # Get linker type from board config (default: flash)
-    linker_type = board.get("build.linker_type", "flash")  # flash or ram
-    
-    # Try board-specific variants first
-    linker_variants = [
-        f"{board_mcu}_{linker_type}.ld",  # e.g., mpc5748g_flash.ld
-        f"{board_mcu}.ld",                # e.g., mpc5748g.ld
-    ]
-    
-    # Add series-based fallbacks
-    if "574" in board_mcu:
-        linker_variants.extend([
-            f"57xx_{linker_type}.ld",     # e.g., 57xx_flash.ld
-            "57xx_flash.ld",              # Always try flash as fallback
-        ])
-    elif "564" in board_mcu:
-        linker_variants.extend([
-            f"56xx_{linker_type}.ld",     # e.g., 56xx_flash.ld
-            "56xx_flash.ld",              # Always try flash as fallback
-        ])
-    elif "577" in board_mcu:
-        linker_variants.extend([
-            f"57xx_{linker_type}.ld",
-            "57xx_flash.ld",
-        ])
-    
-    for variant in linker_variants:
-        platform_linker = join(platform_dir, "linker", variant)
-        if exists(env.subst(platform_linker)):
-            return platform_linker
-    
+    board_mcu = board.get("build.mcu", "mpc5744p").lower()
+    for variant in (
+        "%s_%s.ld" % (board_mcu, linker_type),
+        "57xx_%s.ld" % linker_type,
+        "57xx_flash.ld",
+    ):
+        found = resolve_platform_linker(variant)
+        if found:
+            return found
     return None
 
-# Auto-configure linker script if found
-linker_script = find_linker_script()
-if linker_script:
-    # Use proper SCons substitution and avoid extra spaces in path
-    linker_flag = f"-T{env.subst(linker_script)}"
-    env.Append(LINKFLAGS=[linker_flag])
-    print(f"Using linker script: {env.subst(linker_script)}")
 
-# Create builders for binary output formats
+if not user_specified_linker_script():
+    libs_ld = resolve_platform_linker("libs.ld")
+    memory_ld = find_memory_linker_script()
+    if libs_ld:
+        env.Append(LINKFLAGS=["-T%s" % libs_ld])
+        print("Using linker script: %s" % libs_ld)
+    if memory_ld:
+        env.Append(LINKFLAGS=["-T%s" % memory_ld])
+        print("Using linker script: %s" % memory_ld)
 
 env.Append(
     BUILDERS=dict(
         ElfToBin=Builder(
             action=env.VerboseAction(" ".join([
-                "$OBJCOPY",
-                "-O", "binary",
-                "$SOURCES",
-                "$TARGET"
+                "$OBJCOPY", "--strip-all", "--output-target", "binary",
+                "$SOURCES", "$TARGET"
             ]), "Building binary $TARGET"),
             suffix=".bin"
         ),
         ElfToHex=Builder(
             action=env.VerboseAction(" ".join([
-                "$OBJCOPY",
-                "-O", "ihex",
-                "$SOURCES",
-                "$TARGET"
+                "$OBJCOPY", "--strip-all", "--output-target", "ihex",
+                "$SOURCES", "$TARGET"
             ]), "Building hex $TARGET"),
             suffix=".hex"
+        ),
+        ElfToS19=Builder(
+            action=env.VerboseAction(" ".join([
+                "$OBJCOPY", "--strip-all", "--output-target", "srec",
+                "$SOURCES", "$TARGET"
+            ]), "Building s19 $TARGET"),
+            suffix=".s19"
         )
     )
 )
 
-#
-# Target: Build executable and linkable firmware
-#
-
-target_elf = None
 if "nobuild" in COMMAND_LINE_TARGETS:
     target_elf = join("$BUILD_DIR", "${PROGNAME}.elf")
+    target_hex = join("$BUILD_DIR", "${PROGNAME}.hex")
     target_bin = join("$BUILD_DIR", "${PROGNAME}.bin")
+    target_s19 = join("$BUILD_DIR", "${PROGNAME}.s19")
 else:
     target_elf = env.BuildProgram()
+    target_hex = env.ElfToHex(join("$BUILD_DIR", "${PROGNAME}"), target_elf)
     target_bin = env.ElfToBin(join("$BUILD_DIR", "${PROGNAME}"), target_elf)
+    target_s19 = env.ElfToS19(join("$BUILD_DIR", "${PROGNAME}"), target_elf)
+    env.Depends(target_hex, "checkprogsize")
     env.Depends(target_bin, "checkprogsize")
+    env.Depends(target_s19, "checkprogsize")
 
-AlwaysBuild(env.Alias("nobuild", target_bin))
-target_buildprog = env.Alias("buildprog", target_bin, target_bin)
-
-#
-# Target: Print binary size
-#
+AlwaysBuild(env.Alias("nobuild", [target_hex, target_bin, target_s19]))
+target_buildprog = env.Alias(
+    "buildprog",
+    [target_elf, target_hex, target_bin, target_s19],
+)
 
 target_size = env.Alias(
     "size", target_elf,
     env.VerboseAction("$SIZEPRINTCMD", "Calculating size $SOURCE")
 )
 AlwaysBuild(target_size)
-
-#
-# Default targets
-#
 
 Default([target_buildprog, target_size])

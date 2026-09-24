@@ -5,7 +5,7 @@ ENTRY(_start)
 __HEAP_SIZE            = 0 ;
 __STACK_SIZE           = 4096 ;
 
-SRAM_SIZE =  384K;    
+SRAM_SIZE =  384K;
 /* Define SRAM Base Address */
 SRAM_BASE_ADDR = 0x40000000;
 
@@ -13,28 +13,28 @@ SRAM_BASE_ADDR = 0x40000000;
 LOCALDMEM_SIZE = 64K;
 /* Define CPU0 Local Data SRAM Base Address */
 LOCALDMEM_BASE_ADDR = 0x50800000;
-    
+
 MEMORY
 {
 
     flash_rchw : org = 0x00FA0000,   len = 0x4
     cpu0_reset_vec : org = 0x00FA0004,   len = 0x4
-        
-    m_text :	org = 0x1000000, len = 2048K  
+
+    m_text :	org = 0x1000000, len = 2048K
     m_data :	org = 0x40000000,   len = 384K
-    
-    local_dmem  : org = 0x50800000,   len = 64K    
+
+    local_dmem  : org = 0x50800000,   len = 64K
 }
 
 
 SECTIONS
 {
-    .rchw   : 
+    .rchw   :
     {
         KEEP(*(.rchw))
     } > flash_rchw
 
-    .cpu0_reset_vector  : 
+    .cpu0_reset_vector  :
     {
         KEEP(*(.cpu0_reset_vector))
     } > cpu0_reset_vec
@@ -44,7 +44,7 @@ SECTIONS
     __start = . ;
     	*(.startup)
     } > m_text
-    
+
     .core_exceptions_table   : ALIGN(4096)
     {
       __IVPR_VALUE = . ;
@@ -55,17 +55,17 @@ SECTIONS
     {
       KEEP(*(.intc_vector_table))
     } > m_text
-      
-    .text : 
+
+    .text :
     {
       *(.text.startup)
-      *(.text)      
+      *(.text)
       *(.text.*)
       KEEP (*(.init))
-      KEEP (*(.fini))            
+      KEEP (*(.fini))
       . = ALIGN(16);
     } > m_text
-      
+
     .ctors :
     {
       __CTOR_LIST__ = .;
@@ -100,7 +100,7 @@ SECTIONS
       KEEP (*(.dtors))
       __DTOR_END__ = .;
     } > m_text
-        
+
     .preinit_array :
     {
       PROVIDE_HIDDEN (__preinit_array_start = .);
@@ -123,64 +123,64 @@ SECTIONS
       KEEP (*(.fini_array*))
       PROVIDE_HIDDEN (__fini_array_end = .);
     } > m_text
-          
+
     .rodata :
     {
       *(.rodata)
       *(.rodata.*)
 	  *(.got1)
     } > m_text
-    
+
     .eh_frame_hdr : { *(.eh_frame_hdr) } > m_text
     .eh_frame     : { KEEP (*(.eh_frame)) } > m_text
-    
-	.data   : 
+
+	.data   :
 	{
 	  *(.data)
 	  *(.data.*)
-	  *(.got.plt) 
+	  *(.got.plt)
 	  *(.got)
 	  *(.got2)
 	  *(.dynamic)
-	  *(.fixup)        
+	  *(.fixup)
 	  . = ALIGN(4);
 	}  > m_data AT>m_text
-    
+
     .sdata2  :
-	{  
+	{
 	  *(.sdata2)
 	  *(.sdata2.*)
 	} > m_data AT>m_text
 
 	.sbss2    (NOLOAD)   :
 	{
-      /* _SDA2_BASE_ = .; */ 
+      /* _SDA2_BASE_ = .; */
 	  *(.sbss2)
 	  *(.sbss2.*)
 	} > m_data
-    
+
     .sdata  :
 	{
 	  *(.sdata)
 	  *(.sdata.*)
 	} > m_data AT>m_text
-    
+
 	.bss   (NOLOAD)  :
 	{
 	  __BSS_START = .;
 	  *(.sbss)
-	  *(.sbss.*)	
+	  *(.sbss.*)
       *(.bss)
       *(.bss.*)
       *(COMMON)
       __BSS_END = .;
     } > m_data
-    
-    .stack (NOLOAD) : ALIGN(16) 
+
+    .stack (NOLOAD) : ALIGN(16)
     {
       __HEAP = . ;
       PROVIDE (_end = . );
-      PROVIDE (end = . );      
+      PROVIDE (end = . );
       . += __HEAP_SIZE ;
       __HEAP_END = . ;
       _stack_end = . ;
@@ -189,9 +189,9 @@ SECTIONS
       __SP_INIT = . ;
       . += 4;
     } > local_dmem
- 
+
 /*-------- LABELS USED IN CODE -------------------------------*/
-        
+
 /* Labels for Copying Initialised Data from Flash to RAM */
 __DATA_SRAM_ADDR  = ADDR(.data);
 __SDATA_SRAM_ADDR = ADDR(.sdata);
@@ -201,7 +201,7 @@ __SDATA_SIZE  = SIZEOF(.sdata);
 
 __DATA_ROM_ADDR  = LOADADDR(.data);
 __SDATA_ROM_ADDR = LOADADDR(.sdata);
-   
+
 /* Labels Used for Initialising SRAM ECC */
 __SRAM_SIZE = SRAM_SIZE;
 __SRAM_BASE_ADDR = SRAM_BASE_ADDR;
@@ -209,10 +209,6 @@ __SRAM_BASE_ADDR = SRAM_BASE_ADDR;
 __LOCAL_DMEM_SIZE = LOCALDMEM_SIZE;
 __LOCAL_DMEM_BASE_ADDR = LOCALDMEM_BASE_ADDR;
 
-__BSS_SIZE    = __BSS_END - __BSS_START;    
-      
+__BSS_SIZE    = __BSS_END - __BSS_START;
+
 }
-
-
-
-

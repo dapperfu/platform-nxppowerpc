@@ -1,5 +1,6 @@
 *.pyc
 __pycache__/
+.pio/
 
 # Build artifacts
 tools/tool-pegdbserver-power/package/
